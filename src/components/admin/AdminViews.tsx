@@ -1,0 +1,822 @@
+"use client";
+
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import {
+  batchApi,
+  farmApi,
+  farmerApi,
+  listAllBatches,
+  listAllFarms,
+  mediaApi,
+  priceApi,
+  qrApi,
+  traceEventApi,
+  verificationApi,
+} from "@/lib/admin-api";
+import type {
+  Batch,
+  BatchPayload,
+  BatchWithRelations,
+  Farm,
+  Farmer,
+  FarmMedia,
+  FarmVerification,
+  FarmWithFarmer,
+  PriceBreakdown,
+  PriceBreakdownPayload,
+  QrCode,
+  TraceEvent,
+  TraceEventPayload,
+  VerificationPayload,
+} from "@/types/admin";
+import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
+import {
+  AdminShell,
+  Button,
+  ButtonLink,
+  Card,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  InfoGrid,
+  LoadingState,
+  PageHeader,
+  StatusBadge,
+  inputClass,
+} from "./AdminPrimitives";
+
+const fmt = (value?: string | number | null) => value || "Not available";
+const today = () => new Date().toISOString().slice(0, 10);
+const nowLocal = () => new Date().toISOString().slice(0, 16);
+
+// AdminHomeView is the operator entry point for the complete data flow.
+export function AdminHomeView() {
+  return (
+    <AdminShell>
+      <PageHeader
+        actions={
+          <>
+            <ButtonLink href="/admin/farmers/new">Add Farmer</ButtonLink>
+            <ButtonLink href="/admin/farms/new" variant="secondary">Add Farm</ButtonLink>
+            <ButtonLink href="/admin/batches/new" variant="secondary">Add Batch</ButtonLink>
+          </>
+        }
+        description="Create Farmer -> Create Farm -> Upload Media -> Add Verification -> Create Batch -> Add Trace Events -> Add Price -> Generate QR."
+        eyebrow="MVP Admin"
+        title="Traceability Data Management"
+      />
+      <div className="grid gap-4 md:grid-cols-3">
+        <DashboardCard href="/admin/farmers" title="Farmers" text="Create profiles, update details, and activate or deactivate farmer records." />
+        <DashboardCard href="/admin/farms" title="Farms" text="Manage farm location, media gallery, and verification status." />
+        <DashboardCard href="/admin/batches" title="Batches" text="Create product lots, timeline events, pricing, and QR trace links." />
+      </div>
+    </AdminShell>
+  );
+}
+
+function DashboardCard({ href, text, title }: { href: string; text: string; title: string }) {
+  return (
+    <Link className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md" href={href}>
+      <h2 className="text-2xl font-black">{title}</h2>
+      <p className="mt-2 text-stone-600">{text}</p>
+    </Link>
+  );
+}
+
+// FarmersListView loads all farmers and filters them locally for fast admin lookup.
+export function FarmersListView() {
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setFarmers(await farmerApi.list());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load farmers.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filtered = farmers.filter((farmer) => {
+    const haystack = [farmer.name, farmer.farmerCode, farmer.phone, farmer.village]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query.toLowerCase());
+  });
+
+  async function toggle(farmer: Farmer) {
+    await farmerApi.updateStatus(farmer.id, !farmer.active);
+    await load();
+  }
+
+  return (
+    <AdminShell>
+      <PageHeader
+        actions={<ButtonLink href="/admin/farmers/new">Add Farmer</ButtonLink>}
+        description="Search, edit, activate, and drill into farms or batches for each farmer."
+        title="Farmers"
+      />
+      <Card>
+        <input className={inputClass} placeholder="Search by name, code, phone, village..." value={query} onChange={(event) => setQuery(event.target.value)} />
+      </Card>
+      <div className="mt-4">
+        {loading ? <LoadingState label="Loading farmers..." /> : null}
+        {error ? <ErrorState message={error} onRetry={load} /> : null}
+        {!loading && !error && !filtered.length ? <EmptyState action={<ButtonLink href="/admin/farmers/new">Add Farmer</ButtonLink>} message="No farmers match your search." /> : null}
+        {!loading && !error && filtered.length ? (
+          <div className="grid gap-3">
+            {filtered.map((farmer) => (
+              <Card key={farmer.id}>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-black">{farmer.name}</h2>
+                      <StatusBadge active={farmer.active} />
+                    </div>
+                    <p className="mt-1 font-bold text-stone-600">{farmer.farmerCode} - {farmer.phone}</p>
+                    <p className="text-sm text-stone-500">{farmer.village}, {farmer.district}, {farmer.state} - Joined {farmer.joinedDate}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <ButtonLink href={`/admin/farmers/${farmer.id}`} variant="secondary">Open</ButtonLink>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}/edit`} variant="secondary">Edit</ButtonLink>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}/farms`} variant="secondary">View Farms</ButtonLink>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}/batches`} variant="secondary">View Batches</ButtonLink>
+                    <Button onClick={() => void toggle(farmer)} variant={farmer.active ? "danger" : "primary"}>{farmer.active ? "Deactivate" : "Activate"}</Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </AdminShell>
+  );
+}
+
+// FarmerFormView handles both create and edit modes for farmer records.
+export function FarmerFormView({ farmerId }: { farmerId?: string }) {
+  const router = useRouter();
+  const [farmer, setFarmer] = useState<Farmer | null>(null);
+  const [loading, setLoading] = useState(Boolean(farmerId));
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!farmerId) return;
+    farmerApi.get(farmerId).then(setFarmer).catch((err) => setError(err.message)).finally(() => setLoading(false));
+  }, [farmerId]);
+
+  return (
+    <AdminShell>
+      <PageHeader title={farmerId ? "Edit Farmer" : "Add Farmer"} />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
+      {!loading && !error ? (
+        <FarmerForm
+          initial={farmer}
+          onSubmit={async (payload, active) => {
+            const saved = farmerId ? await farmerApi.update(farmerId, payload) : await farmerApi.create(payload);
+            if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
+            router.push(`/admin/farmers/${saved.id}`);
+          }}
+        />
+      ) : null}
+    </AdminShell>
+  );
+}
+
+// FarmerDetailView shows one farmer plus their farms and batches.
+export function FarmerDetailView({ farmerId }: { farmerId: string }) {
+  const [farmer, setFarmer] = useState<Farmer | null>(null);
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [nextFarmer, nextFarms, nextBatches] = await Promise.all([
+        farmerApi.get(farmerId),
+        farmApi.listByFarmer(farmerId),
+        batchApi.listByFarmer(farmerId),
+      ]);
+      setFarmer(nextFarmer);
+      setFarms(nextFarms);
+      setBatches(nextBatches);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load farmer.");
+    } finally {
+      setLoading(false);
+    }
+  }, [farmerId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminShell>
+      {loading ? <LoadingState label="Loading farmer..." /> : null}
+      {error ? <ErrorState message={error} onRetry={load} /> : null}
+      {farmer ? (
+        <>
+          <PageHeader
+            actions={
+              <>
+                <ButtonLink href={`/admin/farmers/${farmer.id}/edit`}>Edit Farmer</ButtonLink>
+                <ButtonLink href={`/admin/farms/new?farmerId=${farmer.id}`} variant="secondary">Add Farm</ButtonLink>
+                <ButtonLink href={`/admin/batches/new?farmerId=${farmer.id}`} variant="secondary">Add Batch</ButtonLink>
+              </>
+            }
+            description={`${farmer.village}, ${farmer.district}, ${farmer.state}`}
+            title={farmer.name}
+          />
+          <Card>
+            <InfoGrid items={[
+              { label: "Farmer Code", value: farmer.farmerCode },
+              { label: "Phone", value: farmer.phone },
+              { label: "Joined", value: farmer.joinedDate },
+              { label: "Status", value: <StatusBadge active={farmer.active} /> },
+              { label: "Bio", value: farmer.bio },
+            ]} />
+          </Card>
+          <RelatedLists farms={farms} batches={batches} />
+        </>
+      ) : null}
+    </AdminShell>
+  );
+}
+
+function RelatedLists({ batches, farms }: { batches: Batch[]; farms: Farm[] }) {
+  return (
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <Card>
+        <h2 className="text-xl font-black">Farms</h2>
+        <div className="mt-3 space-y-2">
+          {farms.map((farm) => (
+            <Link className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50" href={`/admin/farms/${farm.id}`} key={farm.id}>{farm.farmName}</Link>
+          ))}
+          {!farms.length ? <p className="text-stone-500">No farms yet.</p> : null}
+        </div>
+      </Card>
+      <Card>
+        <h2 className="text-xl font-black">Batches</h2>
+        <div className="mt-3 space-y-2">
+          {batches.map((batch) => (
+            <Link className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50" href={`/admin/batches/${batch.id}`} key={batch.id}>{batch.batchCode} - {batch.cropName}</Link>
+          ))}
+          {!batches.length ? <p className="text-stone-500">No batches yet.</p> : null}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// FarmsListView supports both all-farms and farmer-scoped farm lists.
+export function FarmsListView({ farmerId }: { farmerId?: string }) {
+  const [farms, setFarms] = useState<FarmWithFarmer[]>([]);
+  const [farmer, setFarmer] = useState<Farmer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      if (farmerId) {
+        const [owner, ownerFarms] = await Promise.all([farmerApi.get(farmerId), farmApi.listByFarmer(farmerId)]);
+        setFarmer(owner);
+        setFarms(ownerFarms.map((farm) => ({ ...farm, farmer: owner })));
+      } else {
+        setFarms(await listAllFarms());
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load farms.");
+    } finally {
+      setLoading(false);
+    }
+  }, [farmerId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminShell>
+      <PageHeader actions={<ButtonLink href={farmerId ? `/admin/farms/new?farmerId=${farmerId}` : "/admin/farms/new"}>Add Farm</ButtonLink>} title={farmer ? `${farmer.name}'s Farms` : "Farms"} />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} onRetry={load} /> : null}
+      {!loading && !error && !farms.length ? <EmptyState message="No farms found." /> : null}
+      <div className="grid gap-3">
+        {farms.map((farm) => (
+          <Card key={farm.id}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl font-black">{farm.farmName}</h2>
+                <p className="font-bold text-stone-600">{farm.farmer?.name || "Unknown farmer"}</p>
+                <p className="text-sm text-stone-500">{farm.village}, {farm.district}, {farm.state} - {fmt(farm.sizeAcres)} acres - {farm.farmingType}</p>
+                <p className="text-xs text-stone-400">Lat/Lng: {fmt(farm.latitude)} / {fmt(farm.longitude)}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink href={`/admin/farms/${farm.id}`} variant="secondary">Open</ButtonLink>
+                <ButtonLink href={`/admin/farms/${farm.id}/edit`} variant="secondary">Edit</ButtonLink>
+                <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}>Add Batch</ButtonLink>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </AdminShell>
+  );
+}
+
+// FarmFormView handles farm create/edit, including farmerId query prefill.
+export function FarmFormView({ farmId }: { farmId?: string }) {
+  const router = useRouter();
+  const search = useSearchParams();
+  const farmerId = search.get("farmerId");
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [farm, setFarm] = useState<Farm | null>(null);
+  const [lockedFarmer, setLockedFarmer] = useState(farmerId);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([farmerApi.list(), farmId ? farmApi.get(farmId) : Promise.resolve(null)])
+      .then(([nextFarmers, nextFarm]) => {
+        setFarmers(nextFarmers);
+        setFarm(nextFarm);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [farmId]);
+
+  return (
+    <AdminShell>
+      <PageHeader title={farmId ? "Edit Farm" : "Add Farm"} />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
+      {!loading && !error ? (
+        <FarmForm
+          farmers={farmers}
+          initial={farm}
+          lockedFarmerId={lockedFarmer}
+          onSubmit={async (payload) => {
+            const saved = farmId ? await farmApi.update(farmId, payload) : await farmApi.create(payload);
+            router.push(`/admin/farms/${saved.id}`);
+          }}
+          onUnlockFarmer={() => setLockedFarmer(null)}
+        />
+      ) : null}
+    </AdminShell>
+  );
+}
+
+// FarmDetailView combines farm details, media upload, verification, and batches.
+export function FarmDetailView({ farmId }: { farmId: string }) {
+  const [farm, setFarm] = useState<Farm | null>(null);
+  const [media, setMedia] = useState<FarmMedia[]>([]);
+  const [verification, setVerification] = useState<FarmVerification | null>(null);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [nextFarm, nextMedia, nextVerification, nextBatches] = await Promise.all([
+        farmApi.get(farmId),
+        mediaApi.list(farmId),
+        verificationApi.latest(farmId),
+        batchApi.listByFarm(farmId),
+      ]);
+      setFarm(nextFarm);
+      setMedia(nextMedia);
+      setVerification(nextVerification);
+      setBatches(nextBatches);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load farm.");
+    } finally {
+      setLoading(false);
+    }
+  }, [farmId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminShell>
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} onRetry={load} /> : null}
+      {farm ? (
+        <>
+          <PageHeader
+            actions={
+              <>
+                <ButtonLink href={`/admin/farms/${farm.id}/edit`}>Edit Farm</ButtonLink>
+                <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`} variant="secondary">Add Batch</ButtonLink>
+              </>
+            }
+            title={farm.farmName}
+          />
+          <Card>
+            <InfoGrid items={[
+              { label: "Location", value: `${farm.village}, ${farm.district}, ${farm.state}` },
+              { label: "Size", value: farm.sizeAcres ? `${farm.sizeAcres} acres` : null },
+              { label: "Farming Type", value: farm.farmingType },
+              { label: "Latitude", value: farm.latitude },
+              { label: "Longitude", value: farm.longitude },
+              { label: "Latest Verification", value: verification?.status },
+            ]} />
+          </Card>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <FarmMediaPanel media={media} onDelete={setDeleteId} onUploaded={load} farmId={farm.id} />
+            <VerificationPanel farmId={farm.id} latest={verification} onSaved={load} />
+          </div>
+          <Card className="mt-4">
+            <h2 className="text-xl font-black">Batches From This Farm</h2>
+            <div className="mt-3 space-y-2">
+              {batches.map((batch) => <Link className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50" href={`/admin/batches/${batch.id}`} key={batch.id}>{batch.batchCode} - {batch.cropName}</Link>)}
+              {!batches.length ? <p className="text-stone-500">No batches yet.</p> : null}
+            </div>
+          </Card>
+        </>
+      ) : null}
+      {deleteId ? (
+        <ConfirmDialog
+          message="This media item will be permanently removed."
+          onCancel={() => setDeleteId(null)}
+          onConfirm={() => {
+            void mediaApi.delete(deleteId).then(load).finally(() => setDeleteId(null));
+          }}
+          title="Delete media?"
+        />
+      ) : null}
+    </AdminShell>
+  );
+}
+
+function FarmMediaPanel({ farmId, media, onDelete, onUploaded }: { farmId: string; media: FarmMedia[]; onDelete: (id: string) => void; onUploaded: () => void }) {
+  const [caption, setCaption] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function upload() {
+    if (!file) return;
+    setSaving(true);
+    await mediaApi.upload(farmId, file, caption).finally(() => setSaving(false));
+    setCaption("");
+    setFile(null);
+    onUploaded();
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">Farm Media</h2>
+      <div className="mt-4 grid gap-3">
+        <input className={inputClass} type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+        <input className={inputClass} placeholder="Caption" value={caption} onChange={(event) => setCaption(event.target.value)} />
+        <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : "Upload Farm Media"}</Button>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {media.map((item) => (
+          <div className="rounded-2xl bg-stone-50 p-2" key={item.id}>
+            <div className="aspect-square rounded-xl bg-cover bg-center bg-emerald-100" style={{ backgroundImage: `url(${item.mediaUrl})` }} />
+            <p className="mt-2 text-xs font-bold">{item.caption || item.mediaType}</p>
+            <Button onClick={() => onDelete(item.id)} variant="danger">Delete</Button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function VerificationPanel({ farmId, latest, onSaved }: { farmId: string; latest: FarmVerification | null; onSaved: () => void }) {
+  const [form, setForm] = useState<VerificationPayload>({
+    agroecologyVerified: true,
+    chemicalFreeClaim: true,
+    checklistJson: "{}",
+    nextVerificationDue: "",
+    observations: "",
+    status: "VERIFIED",
+    verificationDate: today(),
+    verificationType: "FIELD_VISIT",
+    verifiedByUserId: null,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    setError("");
+    try {
+      if (form.checklistJson) JSON.parse(form.checklistJson);
+      setSaving(true);
+      await verificationApi.create(farmId, { ...form, nextVerificationDue: form.nextVerificationDue || null });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save verification.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">Verification</h2>
+      {latest ? <p className="mt-2 text-sm font-bold text-emerald-800">Latest: {latest.status} on {latest.verificationDate}</p> : <p className="mt-2 text-sm text-stone-500">No verification yet.</p>}
+      <div className="mt-4 grid gap-3">
+        <input className={inputClass} type="date" value={form.verificationDate} onChange={(event) => setForm({ ...form, verificationDate: event.target.value })} />
+        <input className={inputClass} placeholder="Verification type" value={form.verificationType} onChange={(event) => setForm({ ...form, verificationType: event.target.value })} />
+        <select className={inputClass} value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>VERIFIED</option><option>PENDING</option><option>REJECTED</option></select>
+        <textarea className={`${inputClass} min-h-24`} placeholder="Checklist JSON" value={form.checklistJson ?? ""} onChange={(event) => setForm({ ...form, checklistJson: event.target.value })} />
+        <textarea className={`${inputClass} min-h-24`} placeholder="Observations" value={form.observations ?? ""} onChange={(event) => setForm({ ...form, observations: event.target.value })} />
+        <input className={inputClass} type="date" value={form.nextVerificationDue ?? ""} onChange={(event) => setForm({ ...form, nextVerificationDue: event.target.value })} />
+        <label className="flex gap-2 text-sm font-bold"><input checked={Boolean(form.chemicalFreeClaim)} onChange={(event) => setForm({ ...form, chemicalFreeClaim: event.target.checked })} type="checkbox" /> Chemical-free claim</label>
+        <label className="flex gap-2 text-sm font-bold"><input checked={Boolean(form.agroecologyVerified)} onChange={(event) => setForm({ ...form, agroecologyVerified: event.target.checked })} type="checkbox" /> Agroecology verified</label>
+        {error ? <p className="font-bold text-red-700">{error}</p> : null}
+        <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Add Verification"}</Button>
+      </div>
+    </Card>
+  );
+}
+
+// BatchesListView supports all, farmer-scoped, and farm-scoped batch lists.
+export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerId?: string }) {
+  const [batches, setBatches] = useState<BatchWithRelations[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      if (farmId) setBatches((await batchApi.listByFarm(farmId)) as BatchWithRelations[]);
+      else if (farmerId) setBatches((await batchApi.listByFarmer(farmerId)) as BatchWithRelations[]);
+      else setBatches(await listAllBatches());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load batches.");
+    } finally {
+      setLoading(false);
+    }
+  }, [farmId, farmerId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminShell>
+      <PageHeader actions={<ButtonLink href="/admin/batches/new">Add Batch</ButtonLink>} title="Batches" />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} onRetry={load} /> : null}
+      {!loading && !error && !batches.length ? <EmptyState message="No batches found." /> : null}
+      <div className="grid gap-3">
+        {batches.map((batch) => (
+          <Card key={batch.id}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl font-black">{batch.batchCode}</h2>
+                <p className="font-bold text-stone-600">{batch.cropName} - {batch.variety || "No variety"} - {batch.quantity} {batch.unit}</p>
+                <p className="text-sm text-stone-500">{batch.farmer?.name || batch.farmerId} / {batch.farm?.farmName || batch.farmId}</p>
+                <p className="text-xs text-stone-400">Harvest {batch.harvestDate} - Packed {fmt(batch.packedDate)} - Best before {fmt(batch.bestBeforeDate)} - {batch.status}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink href={`/admin/batches/${batch.id}`} variant="secondary">Open</ButtonLink>
+                <ButtonLink href={`/admin/batches/${batch.id}/edit`} variant="secondary">Edit</ButtonLink>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </AdminShell>
+  );
+}
+
+// BatchFormView handles batch create/edit with optional farmer/farm query prefill.
+export function BatchFormView({ batchId }: { batchId?: string }) {
+  const router = useRouter();
+  const search = useSearchParams();
+  const lockedFarmerId = search.get("farmerId");
+  const lockedFarmId = search.get("farmId");
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [batch, setBatch] = useState<Batch | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([farmerApi.list(), listAllFarms(), batchId ? batchApi.get(batchId) : Promise.resolve(null)])
+      .then(([nextFarmers, nextFarms, nextBatch]) => {
+        setFarmers(nextFarmers);
+        setFarms(nextFarms);
+        setBatch(nextBatch);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [batchId]);
+
+  return (
+    <AdminShell>
+      <PageHeader title={batchId ? "Edit Batch" : "Add Batch"} />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
+      {!loading && !error ? (
+        <BatchForm
+          farmers={farmers}
+          farms={farms}
+          initial={batch}
+          lockedFarmerId={lockedFarmerId}
+          lockedFarmId={lockedFarmId}
+          onSubmit={async (payload: BatchPayload) => {
+            const saved = batchId ? await batchApi.update(batchId, payload) : await batchApi.create(payload);
+            router.push(`/admin/batches/${saved.id}`);
+          }}
+        />
+      ) : null}
+    </AdminShell>
+  );
+}
+
+// BatchDetailView manages timeline, price breakdown, and QR generation for a batch.
+export function BatchDetailView({ batchId }: { batchId: string }) {
+  const [batch, setBatch] = useState<Batch | null>(null);
+  const [events, setEvents] = useState<TraceEvent[]>([]);
+  const [price, setPrice] = useState<PriceBreakdown | null>(null);
+  const [qr, setQr] = useState<QrCode | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [nextBatch, nextEvents, nextPrice, nextQr] = await Promise.all([
+        batchApi.get(batchId),
+        traceEventApi.list(batchId),
+        priceApi.get(batchId),
+        qrApi.get(batchId),
+      ]);
+      setBatch(nextBatch);
+      setEvents(nextEvents);
+      setPrice(nextPrice);
+      setQr(nextQr);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load batch.");
+    } finally {
+      setLoading(false);
+    }
+  }, [batchId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminShell>
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} onRetry={load} /> : null}
+      {batch ? (
+        <>
+          <PageHeader actions={<ButtonLink href={`/admin/batches/${batch.id}/edit`}>Edit Batch</ButtonLink>} title={batch.batchCode} />
+          <Card>
+            <InfoGrid items={[
+              { label: "Crop", value: batch.cropName },
+              { label: "Variety", value: batch.variety },
+              { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
+              { label: "Harvest Date", value: batch.harvestDate },
+              { label: "Packed Date", value: batch.packedDate },
+              { label: "Best Before", value: batch.bestBeforeDate },
+              { label: "Status", value: batch.status },
+            ]} />
+          </Card>
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <TraceEventPanel batchId={batch.id} events={events} onSaved={load} />
+            <PricePanel batchId={batch.id} price={price} onSaved={load} />
+            <QrPanel batchId={batch.id} qr={qr} onSaved={load} />
+          </div>
+        </>
+      ) : null}
+    </AdminShell>
+  );
+}
+
+function TraceEventPanel({ batchId, events, onSaved }: { batchId: string; events: TraceEvent[]; onSaved: () => void }) {
+  const [form, setForm] = useState<TraceEventPayload>({ actorUserId: null, description: "", eventTime: nowLocal(), eventType: "HARVESTED", location: "", metadataJson: "" });
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await traceEventApi.create(batchId, { ...form, eventTime: new Date(form.eventTime).toISOString(), actorUserId: form.actorUserId || null, location: form.location || null, description: form.description || null, metadataJson: form.metadataJson || null }).finally(() => setSaving(false));
+    onSaved();
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">Trace Events</h2>
+      <div className="mt-3 space-y-2">
+        {events.map((event) => <div className="rounded-2xl bg-stone-50 p-3" key={event.id}><p className="font-black">{event.eventType}</p><p className="text-sm text-stone-600">{event.eventTime} - {event.location}</p><p className="text-sm">{event.description}</p></div>)}
+      </div>
+      <div className="mt-4 grid gap-2">
+        <select className={inputClass} value={form.eventType} onChange={(event) => setForm({ ...form, eventType: event.target.value })}>{["HARVESTED", "PACKED", "RECEIVED_AT_MARKET", "SOLD"].map((type) => <option key={type}>{type}</option>)}</select>
+        <input className={inputClass} type="datetime-local" value={form.eventTime} onChange={(event) => setForm({ ...form, eventTime: event.target.value })} />
+        <input className={inputClass} placeholder="Location" value={form.location ?? ""} onChange={(event) => setForm({ ...form, location: event.target.value })} />
+        <textarea className={`${inputClass} min-h-20`} placeholder="Description" value={form.description ?? ""} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+        <textarea className={`${inputClass} min-h-20`} placeholder="Metadata JSON" value={form.metadataJson ?? ""} onChange={(event) => setForm({ ...form, metadataJson: event.target.value })} />
+        <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Add Trace Event"}</Button>
+      </div>
+    </Card>
+  );
+}
+
+function PricePanel({ batchId, onSaved, price }: { batchId: string; onSaved: () => void; price: PriceBreakdown | null }) {
+  const [form, setForm] = useState<PriceBreakdownPayload>({ consumerPrice: 0, farmerPrice: 0, transportCost: 0, packingCost: 0, organizationCost: 0, platformCost: 0, currency: "INR", priceUnit: "kg" });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (price) {
+      setForm({
+        consumerPrice: price.consumerPrice,
+        farmerPrice: price.farmerPrice,
+        transportCost: price.transportCost ?? 0,
+        packingCost: price.packingCost ?? 0,
+        organizationCost: price.organizationCost ?? 0,
+        platformCost: price.platformCost ?? 0,
+        currency: price.currency,
+        priceUnit: price.priceUnit,
+      });
+    }
+  }, [price]);
+
+  async function save() {
+    setSaving(true);
+    const action = price ? priceApi.update : priceApi.create;
+    await action(batchId, form).finally(() => setSaving(false));
+    onSaved();
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">Price Breakdown</h2>
+      <div className="mt-3 grid gap-2">
+        {(["consumerPrice", "farmerPrice", "transportCost", "packingCost", "organizationCost", "platformCost"] as const).map((key) => (
+          <input className={inputClass} key={key} min={0} placeholder={key} type="number" value={form[key] ?? 0} onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })} />
+        ))}
+        <input className={inputClass} value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} />
+        <input className={inputClass} value={form.priceUnit} onChange={(event) => setForm({ ...form, priceUnit: event.target.value })} />
+        <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : price ? "Update Price" : "Add Price"}</Button>
+      </div>
+    </Card>
+  );
+}
+
+function QrPanel({ batchId, onSaved, qr }: { batchId: string; onSaved: () => void; qr: QrCode | null }) {
+  const [saving, setSaving] = useState(false);
+  const [origin, setOrigin] = useState("");
+  const traceUrl = qr ? `${origin}/trace/${qr.publicToken}` : "";
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  async function generate() {
+    setSaving(true);
+    await qrApi.create(batchId).finally(() => setSaving(false));
+    onSaved();
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">QR Code</h2>
+      {qr ? (
+        <div className="mt-3 space-y-3">
+          <p className="text-sm font-bold text-stone-600">Public token</p>
+          <p className="break-all rounded-2xl bg-stone-50 p-3 text-sm">{qr.publicToken}</p>
+          <p className="text-sm font-bold text-stone-600">Public trace URL</p>
+          <Link className="block break-all rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900" href={`/trace/${qr.publicToken}`}>{traceUrl}</Link>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <p className="mb-3 text-stone-600">No QR has been generated for this batch.</p>
+          <Button disabled={saving} onClick={() => void generate()}>{saving ? "Generating..." : "Generate QR Code"}</Button>
+        </div>
+      )}
+    </Card>
+  );
+}
