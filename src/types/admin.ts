@@ -71,6 +71,22 @@ export type FarmMedia = {
   createdAt: string;
 };
 
+export type VerificationEvidence = {
+  id: string;
+  verificationId: string;
+  fileType: string;
+  fileUrl: string;
+  fileKey?: Nullable<string>;
+  fileHash?: Nullable<string>;
+  contentType?: Nullable<string>;
+  sizeBytes?: Nullable<number>;
+  caption: Nullable<string>;
+  isPublic: boolean;
+  capturedAt: Nullable<string>;
+  uploadedByUserId: Nullable<string>;
+  createdAt: string;
+};
+
 export type FarmVerification = {
   id: string;
   farmId: string;
@@ -140,5 +156,12 @@ export type QrCode = {
   expiresAt: Nullable<string>;
 };
 
-export type FarmWithFarmer = Farm & { farmer?: Farmer };
-export type BatchWithRelations = Batch & { farmer?: Farmer; farm?: Farm };
+export type FarmWithFarmer = Farm & { farmer?: Farmer; farmerName?: string };
+export type BatchWithRelations = Batch & {
+  farmer?: Farmer;
+  farm?: Farm;
+  farmerName?: string;
+  farmName?: string;
+};
+export type FarmListItem = Farm & { farmerName?: string };
+export type BatchListItem = Batch & { farmerName?: string; farmName?: string };

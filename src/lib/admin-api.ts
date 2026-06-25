@@ -7,6 +7,7 @@ import type {
   FarmerPayload,
   FarmMedia,
   FarmPayload,
+  FarmListItem,
   FarmVerification,
   FarmWithFarmer,
   PriceBreakdown,
@@ -14,7 +15,9 @@ import type {
   QrCode,
   TraceEvent,
   TraceEventPayload,
+  VerificationEvidence,
   VerificationPayload,
+  BatchListItem,
 } from "@/types/admin";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
@@ -32,13 +35,21 @@ async function request<T>(
   init: RequestInit = {},
   options: { optional404?: boolean } = {},
 ): Promise<T> {
-  const response = await fetch(`${baseUrl()}${path}`, {
-    ...init,
-    headers:
-      init.body instanceof FormData
-        ? init.headers
-        : { "Content-Type": "application/json", ...init.headers },
-  });
+  const url = `${baseUrl()}${path}`;
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers:
+        init.body instanceof FormData
+          ? init.headers
+          : { "Content-Type": "application/json", ...init.headers },
+    });
+  } catch (error) {
+    console.error("Admin API network error", { error, url });
+    throw new Error("Backend unavailable. Please make sure the API server is running.");
+  }
 
   if (options.optional404 && response.status === 404) {
     return null as T;
@@ -46,12 +57,15 @@ async function request<T>(
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
+    let rawBody = "";
     try {
-      const body = (await response.json()) as { message?: string; error?: string };
+      rawBody = await response.text();
+      const body = JSON.parse(rawBody) as { message?: string; error?: string };
       message = body.message ?? body.error ?? message;
     } catch {
       // Keep status-based fallback.
     }
+    console.error("Admin API error", { body: rawBody, status: response.status, url });
     throw new Error(message);
   }
 
@@ -77,13 +91,30 @@ export const farmerApi = {
       body: asJson({ active }),
       method: "PATCH",
     }),
+  uploadIntroVideo: (farmerId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<Farmer>(`/api/farmers/${farmerId}/intro-video/upload`, {
+      body: formData,
+      method: "POST",
+    });
+  },
+  uploadProfilePhoto: (farmerId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<Farmer>(`/api/farmers/${farmerId}/profile-photo/upload`, {
+      body: formData,
+      method: "POST",
+    });
+  },
 };
 
-// Farm APIs are scoped around farmers because the backend does not expose GET /api/farms.
+// Farm APIs cover both global farm lookup and farmer-scoped farm lookup.
 export const farmApi = {
   create: (payload: FarmPayload) =>
     request<Farm>("/api/farms", { body: asJson(payload), method: "POST" }),
   get: (farmId: string) => request<Farm>(`/api/farms/${farmId}`),
+  list: () => request<FarmListItem[]>("/api/farms"),
   listByFarmer: (farmerId: string) =>
     request<Farm[]>(`/api/farmers/${farmerId}/farms`),
   update: (farmId: string, payload: FarmPayload) =>
@@ -98,6 +129,7 @@ export const batchApi = {
   create: (payload: BatchPayload) =>
     request<Batch>("/api/batches", { body: asJson(payload), method: "POST" }),
   get: (batchId: string) => request<Batch>(`/api/batches/${batchId}`),
+  list: () => request<BatchListItem[]>("/api/batches"),
   listByFarm: (farmId: string) => request<Batch[]>(`/api/farms/${farmId}/batches`),
   listByFarmer: (farmerId: string) =>
     request<Batch[]>(`/api/farmers/${farmerId}/batches`),
@@ -121,6 +153,30 @@ export const mediaApi = {
       body: formData,
       method: "POST",
     });
+  },
+};
+
+export const evidenceApi = {
+  delete: (evidenceId: string) =>
+    request<void>(`/api/evidence/${evidenceId}`, { method: "DELETE" }),
+  list: (verificationId: string) =>
+    request<VerificationEvidence[]>(
+      `/api/verifications/${verificationId}/evidence`,
+    ),
+  upload: (
+    verificationId: string,
+    file: File,
+    caption: string,
+    isPublic: boolean,
+  ) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (caption.trim()) formData.append("caption", caption.trim());
+    formData.append("isPublic", String(isPublic));
+    return request<VerificationEvidence>(
+      `/api/verifications/${verificationId}/evidence/upload`,
+      { body: formData, method: "POST" },
+    );
   },
 };
 
@@ -184,47 +240,25 @@ export const qrApi = {
     ),
 };
 
-// Aggregate all farms by loading every farmer's farms.
+// Aggregate all farms with farmer details for friendly admin lists.
 export async function listAllFarms(): Promise<FarmWithFarmer[]> {
-  const farmers = await farmerApi.list();
-  const farms = await Promise.all(
-    farmers.map(async (farmer) => {
-      try {
-        return (await farmApi.listByFarmer(farmer.id)).map((farm) => ({
-          ...farm,
-          farmer,
-        }));
-      } catch {
-        return [];
-      }
-    }),
-  );
-  return farms.flat();
+  const [farmers, farms] = await Promise.all([farmerApi.list(), farmApi.list()]);
+  const farmerMap = new Map(farmers.map((farmer) => [farmer.id, farmer]));
+  return farms.map((farm) => ({ ...farm, farmer: farmerMap.get(farm.farmerId) }));
 }
 
-// Aggregate all batches by loading every farmer's batches and joining known farm/farmer names.
+// Aggregate all batches with farmer and farm names for friendly admin lists.
 export async function listAllBatches(): Promise<BatchWithRelations[]> {
-  const [farmers, farms] = await Promise.all([farmerApi.list(), listAllFarms()]);
+  const [farmers, farms, batches] = await Promise.all([
+    farmerApi.list(),
+    listAllFarms(),
+    batchApi.list(),
+  ]);
   const farmerMap = new Map(farmers.map((farmer) => [farmer.id, farmer]));
   const farmMap = new Map(farms.map((farm) => [farm.id, farm]));
-  const byId = new Map<string, BatchWithRelations>();
-
-  await Promise.all(
-    farmers.map(async (farmer) => {
-      try {
-        const batches = await batchApi.listByFarmer(farmer.id);
-        batches.forEach((batch) => {
-          byId.set(batch.id, {
-            ...batch,
-            farm: farmMap.get(batch.farmId),
-            farmer: farmerMap.get(batch.farmerId),
-          });
-        });
-      } catch {
-        // Keep loading other farmers.
-      }
-    }),
-  );
-
-  return [...byId.values()];
+  return batches.map((batch) => ({
+    ...batch,
+    farm: farmMap.get(batch.farmId),
+    farmer: farmerMap.get(batch.farmerId),
+  }));
 }

@@ -45,7 +45,7 @@ export function FarmerForm({
     event.preventDefault();
     setState({});
     const phoneDigits = form.phone.replace(/\D/g, "");
-    if (!form.farmerCode || !form.name || !form.phone || !form.village || !form.district || !form.state || !form.joinedDate) {
+    if (!form.name || !form.phone || !form.village || !form.district || !form.state || !form.joinedDate) {
       setState({ error: "Please fill all required farmer fields." });
       return;
     }
@@ -69,12 +69,9 @@ export function FarmerForm({
       <Card>
         <h2 className="text-xl font-black">Basic Details</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <TextField label="Farmer Code" required value={form.farmerCode} onChange={(farmerCode) => setForm({ ...form, farmerCode })} />
           <TextField label="Name" required value={form.name} onChange={(name) => setForm({ ...form, name })} />
           <TextField label="Phone" required value={form.phone} onChange={(phone) => setForm({ ...form, phone })} help="10 digits only" />
           <TextField label="Joined Date" required type="date" value={form.joinedDate} onChange={(joinedDate) => setForm({ ...form, joinedDate })} />
-          <TextField label="Profile Photo URL" value={form.profilePhotoUrl ?? ""} onChange={(profilePhotoUrl) => setForm({ ...form, profilePhotoUrl })} />
-          <TextField label="Intro Video URL" value={form.introVideoUrl ?? ""} onChange={(introVideoUrl) => setForm({ ...form, introVideoUrl })} />
         </div>
       </Card>
       <Card>
@@ -177,7 +174,7 @@ export function FarmForm({
               <select className={inputClass} disabled={locked} value={form.farmerId} onChange={(event) => setForm({ ...form, farmerId: event.target.value })}>
                 <option value="">Select farmer</option>
                 {farmers.map((farmer) => (
-                  <option key={farmer.id} value={farmer.id}>{farmer.name} ({farmer.farmerCode})</option>
+                  <option key={farmer.id} value={farmer.id}>{farmer.name} - {farmer.village}, {farmer.district}</option>
                 ))}
               </select>
               {locked ? (
@@ -311,7 +308,7 @@ export function BatchForm({
             <select className={inputClass} disabled={Boolean(lockedFarmerId)} value={form.farmerId} onChange={(event) => setForm({ ...form, farmerId: event.target.value, farmId: "" })}>
               <option value="">Select farmer</option>
               {farmers.map((farmer) => (
-                <option key={farmer.id} value={farmer.id}>{farmer.name} ({farmer.farmerCode})</option>
+                <option key={farmer.id} value={farmer.id}>{farmer.name} - {farmer.village}, {farmer.district}</option>
               ))}
             </select>
           </Field>

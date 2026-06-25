@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   batchApi,
+  evidenceApi,
   farmApi,
   farmerApi,
   listAllBatches,
@@ -31,6 +32,7 @@ import type {
   QrCode,
   TraceEvent,
   TraceEventPayload,
+  VerificationEvidence,
   VerificationPayload,
 } from "@/types/admin";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
@@ -52,6 +54,10 @@ import {
 const fmt = (value?: string | number | null) => value || "Not available";
 const today = () => new Date().toISOString().slice(0, 10);
 const nowLocal = () => new Date().toISOString().slice(0, 16);
+const isVideoFile = (type?: string | null, url?: string | null) =>
+  Boolean(type?.toLowerCase().includes("video") || url?.match(/\.(mp4|mov|webm)(\?|$)/i));
+const isImageFile = (type?: string | null, url?: string | null) =>
+  Boolean(type?.toLowerCase().includes("image") || url?.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i));
 
 // AdminHomeView is the operator entry point for the complete data flow.
 export function AdminHomeView() {
@@ -111,7 +117,7 @@ export function FarmersListView() {
   }, [load]);
 
   const filtered = farmers.filter((farmer) => {
-    const haystack = [farmer.name, farmer.farmerCode, farmer.phone, farmer.village]
+    const haystack = [farmer.name, farmer.phone, farmer.village, farmer.district, farmer.state]
       .join(" ")
       .toLowerCase();
     return haystack.includes(query.toLowerCase());
@@ -130,7 +136,7 @@ export function FarmersListView() {
         title="Farmers"
       />
       <Card>
-        <input className={inputClass} placeholder="Search by name, code, phone, village..." value={query} onChange={(event) => setQuery(event.target.value)} />
+        <input className={inputClass} placeholder="Search by name, phone, village, district..." value={query} onChange={(event) => setQuery(event.target.value)} />
       </Card>
       <div className="mt-4">
         {loading ? <LoadingState label="Loading farmers..." /> : null}
@@ -141,13 +147,19 @@ export function FarmersListView() {
             {filtered.map((farmer) => (
               <Card key={farmer.id}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
+                  <div className="flex gap-4">
+                    <MediaThumb
+                      type="image"
+                      url={farmer.profilePhotoUrl}
+                    />
+                    <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-black">{farmer.name}</h2>
                       <StatusBadge active={farmer.active} />
                     </div>
-                    <p className="mt-1 font-bold text-stone-600">{farmer.farmerCode} - {farmer.phone}</p>
+                    <p className="mt-1 font-bold text-stone-600">{farmer.phone}</p>
                     <p className="text-sm text-stone-500">{farmer.village}, {farmer.district}, {farmer.state} - Joined {farmer.joinedDate}</p>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <ButtonLink href={`/admin/farmers/${farmer.id}`} variant="secondary">Open</ButtonLink>
@@ -247,13 +259,30 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
           />
           <Card>
             <InfoGrid items={[
-              { label: "Farmer Code", value: farmer.farmerCode },
               { label: "Phone", value: farmer.phone },
               { label: "Joined", value: farmer.joinedDate },
               { label: "Status", value: <StatusBadge active={farmer.active} /> },
               { label: "Bio", value: farmer.bio },
             ]} />
           </Card>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <FarmerMediaUpload
+              currentUrl={farmer.profilePhotoUrl}
+              label="Profile photo"
+              accept="image/jpeg,image/png,image/webp"
+              onUpload={(file) => farmerApi.uploadProfilePhoto(farmer.id, file)}
+              onUploaded={load}
+              previewType="image"
+            />
+            <FarmerMediaUpload
+              currentUrl={farmer.introVideoUrl}
+              label="Intro video"
+              accept="video/mp4,video/quicktime,video/webm"
+              onUpload={(file) => farmerApi.uploadIntroVideo(farmer.id, file)}
+              onUploaded={load}
+              previewType="video"
+            />
+          </div>
           <RelatedLists farms={farms} batches={batches} />
         </>
       ) : null}
@@ -327,7 +356,7 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-xl font-black">{farm.farmName}</h2>
-                <p className="font-bold text-stone-600">{farm.farmer?.name || "Unknown farmer"}</p>
+                <p className="font-bold text-stone-600">{farm.farmer?.name || farm.farmerName || "Unknown farmer"}</p>
                 <p className="text-sm text-stone-500">{farm.village}, {farm.district}, {farm.state} - {fmt(farm.sizeAcres)} acres - {farm.farmingType}</p>
                 <p className="text-xs text-stone-400">Lat/Lng: {fmt(farm.latitude)} / {fmt(farm.longitude)}</p>
               </div>
@@ -391,6 +420,8 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
   const [farm, setFarm] = useState<Farm | null>(null);
   const [media, setMedia] = useState<FarmMedia[]>([]);
   const [verification, setVerification] = useState<FarmVerification | null>(null);
+  const [verifications, setVerifications] = useState<FarmVerification[]>([]);
+  const [evidence, setEvidence] = useState<VerificationEvidence[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -400,15 +431,18 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
     setLoading(true);
     setError("");
     try {
-      const [nextFarm, nextMedia, nextVerification, nextBatches] = await Promise.all([
+      const [nextFarm, nextMedia, nextVerification, nextVerifications, nextBatches] = await Promise.all([
         farmApi.get(farmId),
         mediaApi.list(farmId),
         verificationApi.latest(farmId),
+        verificationApi.list(farmId),
         batchApi.listByFarm(farmId),
       ]);
       setFarm(nextFarm);
       setMedia(nextMedia);
       setVerification(nextVerification);
+      setVerifications(nextVerifications);
+      setEvidence(nextVerification ? await evidenceApi.list(nextVerification.id) : []);
       setBatches(nextBatches);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load farm.");
@@ -448,7 +482,19 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
           </Card>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <FarmMediaPanel media={media} onDelete={setDeleteId} onUploaded={load} farmId={farm.id} />
-            <VerificationPanel farmId={farm.id} latest={verification} onSaved={load} />
+            <VerificationPanel
+              evidence={evidence}
+              farmId={farm.id}
+              latest={verification}
+              onEvidenceDelete={(id) => evidenceApi.delete(id).then(load)}
+              onEvidenceUpload={(file, caption, isPublic) =>
+                verification
+                  ? evidenceApi.upload(verification.id, file, caption, isPublic).then(load)
+                  : Promise.resolve()
+              }
+              onSaved={load}
+              verifications={verifications}
+            />
           </div>
           <Card className="mt-4">
             <h2 className="text-xl font-black">Batches From This Farm</h2>
@@ -477,38 +523,236 @@ function FarmMediaPanel({ farmId, media, onDelete, onUploaded }: { farmId: strin
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const previewUrl = useFilePreview(file);
 
   async function upload() {
     if (!file) return;
     setSaving(true);
-    await mediaApi.upload(farmId, file, caption).finally(() => setSaving(false));
-    setCaption("");
-    setFile(null);
-    onUploaded();
+    try {
+      await mediaApi.upload(farmId, file, caption);
+      setCaption("");
+      setFile(null);
+      onUploaded();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Card>
       <h2 className="text-xl font-black">Farm Media</h2>
       <div className="mt-4 grid gap-3">
-        <input className={inputClass} type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+        <DropUpload
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+          file={file}
+          label="Drop farm photo or video here"
+          onFile={setFile}
+          previewUrl={previewUrl}
+        />
         <input className={inputClass} placeholder="Caption" value={caption} onChange={(event) => setCaption(event.target.value)} />
         <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : "Upload Farm Media"}</Button>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {media.map((item) => (
           <div className="rounded-2xl bg-stone-50 p-2" key={item.id}>
-            <div className="aspect-square rounded-xl bg-cover bg-center bg-emerald-100" style={{ backgroundImage: `url(${item.mediaUrl})` }} />
+            <MediaPreview className="aspect-square rounded-xl" type={item.contentType || item.mediaType} url={item.mediaUrl} />
             <p className="mt-2 text-xs font-bold">{item.caption || item.mediaType}</p>
             <Button onClick={() => onDelete(item.id)} variant="danger">Delete</Button>
           </div>
         ))}
+        {!media.length ? <p className="col-span-full text-sm text-stone-500">No farm media uploaded yet.</p> : null}
       </div>
     </Card>
   );
 }
 
-function VerificationPanel({ farmId, latest, onSaved }: { farmId: string; latest: FarmVerification | null; onSaved: () => void }) {
+function FarmerMediaUpload({
+  accept,
+  currentUrl,
+  label,
+  onUpload,
+  onUploaded,
+  previewType,
+}: {
+  accept: string;
+  currentUrl: string | null;
+  label: string;
+  onUpload: (file: File) => Promise<Farmer>;
+  onUploaded: () => void;
+  previewType: "image" | "video";
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const previewUrl = useFilePreview(file);
+
+  async function upload() {
+    if (!file) return;
+    setSaving(true);
+    try {
+      await onUpload(file);
+      setFile(null);
+      onUploaded();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">{label}</h2>
+      <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr]">
+        <MediaPreview className="aspect-square rounded-2xl" type={previewType} url={previewUrl || currentUrl} />
+        <div className="grid gap-3">
+          <DropUpload accept={accept} file={file} label={`Upload ${label.toLowerCase()}`} onFile={setFile} previewUrl={previewUrl} />
+          <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : `Save ${label}`}</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function EvidenceUploader({
+  evidence,
+  onDelete,
+  onUpload,
+}: {
+  evidence: VerificationEvidence[];
+  onDelete: (id: string) => Promise<void>;
+  onUpload: (file: File, caption: string, isPublic: boolean) => Promise<void>;
+}) {
+  const [caption, setCaption] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [isPublic, setIsPublic] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const previewUrl = useFilePreview(file);
+
+  async function upload() {
+    if (!file) return;
+    setSaving(true);
+    try {
+      await onUpload(file, caption, isPublic);
+      setCaption("");
+      setFile(null);
+      setIsPublic(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      <DropUpload
+        accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,application/pdf"
+        file={file}
+        label="Drop evidence photo, video, or PDF here"
+        onFile={setFile}
+        previewUrl={previewUrl}
+      />
+      <input className={inputClass} placeholder="Evidence caption" value={caption} onChange={(event) => setCaption(event.target.value)} />
+      <label className="flex items-center gap-2 text-sm font-bold">
+        <input checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} type="checkbox" />
+        Public on customer trace page
+      </label>
+      <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : "Upload Evidence"}</Button>
+      <div className="grid grid-cols-2 gap-3">
+        {evidence.map((item) => (
+          <div className="rounded-2xl bg-white p-2 shadow-sm" key={item.id}>
+            <MediaPreview className="aspect-square rounded-xl" type={item.contentType || item.fileType} url={item.fileUrl} />
+            <p className="mt-2 text-xs font-bold">{item.caption || item.fileType}</p>
+            <p className="text-xs text-stone-500">{item.isPublic ? "Public" : "Private"}</p>
+            <Button onClick={() => void onDelete(item.id)} variant="danger">Delete</Button>
+          </div>
+        ))}
+        {!evidence.length ? <p className="col-span-full text-sm text-stone-500">No evidence uploaded yet.</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function DropUpload({
+  accept,
+  file,
+  label,
+  onFile,
+  previewUrl,
+}: {
+  accept: string;
+  file: File | null;
+  label: string;
+  onFile: (file: File | null) => void;
+  previewUrl: string | null;
+}) {
+  return (
+    <label
+      className="block cursor-pointer rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/70 p-4 text-center transition hover:bg-emerald-50"
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        onFile(event.dataTransfer.files?.[0] ?? null);
+      }}
+    >
+      <input accept={accept} className="sr-only" type="file" onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
+      {previewUrl ? <MediaPreview className="mx-auto mb-3 h-28 w-28 rounded-xl" type={file?.type} url={previewUrl} /> : null}
+      <span className="font-black text-emerald-950">{file ? file.name : label}</span>
+      <span className="mt-1 block text-xs text-emerald-800">Click to browse or drag and drop</span>
+    </label>
+  );
+}
+
+function MediaPreview({ className, type, url }: { className: string; type?: string | null; url?: string | null }) {
+  if (!url) {
+    return <div className={`${className} flex items-center justify-center bg-emerald-50 text-sm font-black text-emerald-800`}>No media</div>;
+  }
+  if (isVideoFile(type, url)) {
+    return <video className={`${className} bg-stone-950 object-cover`} controls src={url} />;
+  }
+  if (isImageFile(type, url) || type === "image") {
+    return <div className={`${className} bg-emerald-100 bg-cover bg-center`} style={{ backgroundImage: `url(${url})` }} />;
+  }
+  return (
+    <a className={`${className} flex items-center justify-center bg-stone-100 p-3 text-center text-sm font-black text-stone-700`} href={url} rel="noreferrer" target="_blank">
+      Open file
+    </a>
+  );
+}
+
+function MediaThumb({ type, url }: { type: string; url?: string | null }) {
+  return <MediaPreview className="h-16 w-16 shrink-0 rounded-2xl" type={type} url={url || null} />;
+}
+
+function useFilePreview(file: File | null) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return previewUrl;
+}
+
+function VerificationPanel({
+  evidence,
+  farmId,
+  latest,
+  onEvidenceDelete,
+  onEvidenceUpload,
+  onSaved,
+  verifications,
+}: {
+  evidence: VerificationEvidence[];
+  farmId: string;
+  latest: FarmVerification | null;
+  onEvidenceDelete: (id: string) => Promise<void>;
+  onEvidenceUpload: (file: File, caption: string, isPublic: boolean) => Promise<void>;
+  onSaved: () => void;
+  verifications: FarmVerification[];
+}) {
   const [form, setForm] = useState<VerificationPayload>({
     agroecologyVerified: true,
     chemicalFreeClaim: true,
@@ -541,6 +785,25 @@ function VerificationPanel({ farmId, latest, onSaved }: { farmId: string; latest
     <Card>
       <h2 className="text-xl font-black">Verification</h2>
       {latest ? <p className="mt-2 text-sm font-bold text-emerald-800">Latest: {latest.status} on {latest.verificationDate}</p> : <p className="mt-2 text-sm text-stone-500">No verification yet.</p>}
+      {latest ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-black uppercase text-stone-500">Evidence for latest verification</h3>
+          <EvidenceUploader onDelete={onEvidenceDelete} onUpload={onEvidenceUpload} evidence={evidence} />
+        </div>
+      ) : null}
+      {verifications.length ? (
+        <div className="mt-4 rounded-2xl bg-emerald-50 p-3">
+          <h3 className="font-black text-emerald-950">Verification history</h3>
+          <div className="mt-2 space-y-2">
+            {verifications.map((item) => (
+              <div className="rounded-xl bg-white p-3 text-sm" key={item.id}>
+                <p className="font-black">{item.status || "Recorded"} - {item.verificationDate}</p>
+                <p className="text-stone-600">{item.observations || "No observations added."}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-3">
         <input className={inputClass} type="date" value={form.verificationDate} onChange={(event) => setForm({ ...form, verificationDate: event.target.value })} />
         <input className={inputClass} placeholder="Verification type" value={form.verificationType} onChange={(event) => setForm({ ...form, verificationType: event.target.value })} />
@@ -594,7 +857,7 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
               <div>
                 <h2 className="text-xl font-black">{batch.batchCode}</h2>
                 <p className="font-bold text-stone-600">{batch.cropName} - {batch.variety || "No variety"} - {batch.quantity} {batch.unit}</p>
-                <p className="text-sm text-stone-500">{batch.farmer?.name || batch.farmerId} / {batch.farm?.farmName || batch.farmId}</p>
+                <p className="text-sm text-stone-500">{batch.farmer?.name || batch.farmerName || "Unknown farmer"} / {batch.farm?.farmName || batch.farmName || "Unknown farm"}</p>
                 <p className="text-xs text-stone-400">Harvest {batch.harvestDate} - Packed {fmt(batch.packedDate)} - Best before {fmt(batch.bestBeforeDate)} - {batch.status}</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -658,6 +921,8 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
 export function BatchDetailView({ batchId }: { batchId: string }) {
   const [batch, setBatch] = useState<Batch | null>(null);
   const [events, setEvents] = useState<TraceEvent[]>([]);
+  const [farm, setFarm] = useState<Farm | null>(null);
+  const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [price, setPrice] = useState<PriceBreakdown | null>(null);
   const [qr, setQr] = useState<QrCode | null>(null);
   const [loading, setLoading] = useState(true);
@@ -673,8 +938,14 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
         priceApi.get(batchId),
         qrApi.get(batchId),
       ]);
+      const [nextFarmer, nextFarm] = await Promise.all([
+        farmerApi.get(nextBatch.farmerId),
+        farmApi.get(nextBatch.farmId),
+      ]);
       setBatch(nextBatch);
       setEvents(nextEvents);
+      setFarm(nextFarm);
+      setFarmer(nextFarmer);
       setPrice(nextPrice);
       setQr(nextQr);
     } catch (err) {
@@ -698,6 +969,8 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
           <Card>
             <InfoGrid items={[
               { label: "Crop", value: batch.cropName },
+              { label: "Farmer", value: farmer?.name },
+              { label: "Farm", value: farm?.farmName },
               { label: "Variety", value: batch.variety },
               { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
               { label: "Harvest Date", value: batch.harvestDate },
@@ -789,6 +1062,7 @@ function PricePanel({ batchId, onSaved, price }: { batchId: string; onSaved: () 
 function QrPanel({ batchId, onSaved, qr }: { batchId: string; onSaved: () => void; qr: QrCode | null }) {
   const [saving, setSaving] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [copied, setCopied] = useState(false);
   const traceUrl = qr ? `${origin}/trace/${qr.publicToken}` : "";
 
   useEffect(() => {
@@ -801,15 +1075,29 @@ function QrPanel({ batchId, onSaved, qr }: { batchId: string; onSaved: () => voi
     onSaved();
   }
 
+  async function copyTraceUrl() {
+    if (!traceUrl) return;
+    await navigator.clipboard.writeText(traceUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
   return (
     <Card>
       <h2 className="text-xl font-black">QR Code</h2>
       {qr ? (
         <div className="mt-3 space-y-3">
-          <p className="text-sm font-bold text-stone-600">Public token</p>
-          <p className="break-all rounded-2xl bg-stone-50 p-3 text-sm">{qr.publicToken}</p>
+          {qr.qrImageUrl ? (
+            <div className="rounded-3xl bg-white p-3 shadow-inner">
+              <MediaPreview className="mx-auto aspect-square w-48 rounded-2xl" type="image" url={qr.qrImageUrl} />
+            </div>
+          ) : null}
           <p className="text-sm font-bold text-stone-600">Public trace URL</p>
           <Link className="block break-all rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900" href={`/trace/${qr.publicToken}`}>{traceUrl}</Link>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void copyTraceUrl()} variant="secondary">{copied ? "Copied" : "Copy URL"}</Button>
+            <ButtonLink href={`/trace/${qr.publicToken}`} variant="secondary">Open Trace Page</ButtonLink>
+          </div>
         </div>
       ) : (
         <div className="mt-3">

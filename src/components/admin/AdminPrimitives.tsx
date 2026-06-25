@@ -3,11 +3,15 @@ import type { ReactNode } from "react";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-[#f8f3e9] px-4 py-5 text-stone-950 sm:px-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#e7f6df_0,#f8f3e9_34%,#fffaf0_100%)] px-4 py-5 text-stone-950 sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <nav className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-100 bg-white/85 px-4 py-3 shadow-sm">
-          <Link className="text-xl font-black text-emerald-950" href="/admin">
-            FarmToFolk Admin
+        <nav className="sticky top-4 z-20 mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[2rem] border border-white/70 bg-white/90 px-4 py-3 shadow-[0_18px_60px_rgba(34,65,33,0.10)] backdrop-blur">
+          <Link className="flex items-center gap-3 text-xl font-black text-emerald-950" href="/admin">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">FTF</span>
+            <span>
+              FarmToFolk Admin
+              <span className="block text-xs font-bold text-stone-500">Traceability cockpit</span>
+            </span>
           </Link>
           <div className="flex flex-wrap gap-2 text-sm font-bold">
             <NavLink href="/admin/farmers">Farmers</NavLink>
@@ -45,7 +49,7 @@ export function PageHeader({
   title: string;
 }) {
   return (
-    <header className="mb-5 flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+    <header className="mb-5 flex flex-col gap-4 rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_60px_rgba(34,65,33,0.08)] sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow ? (
           <p className="text-sm font-black uppercase tracking-wide text-emerald-700">
@@ -107,7 +111,7 @@ export function Button({
 
 function buttonClass(variant: "primary" | "secondary" | "danger") {
   const base =
-    "inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black transition focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0";
   if (variant === "danger") {
     return `${base} bg-red-50 text-red-700 hover:bg-red-100 focus-visible:ring-red-200`;
   }
@@ -120,7 +124,7 @@ function buttonClass(variant: "primary" | "secondary" | "danger") {
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section
-      className={`rounded-3xl border border-stone-200 bg-white p-5 shadow-sm ${className}`}
+      className={`rounded-[1.75rem] border border-white/75 bg-white/95 p-5 shadow-[0_14px_45px_rgba(34,65,33,0.07)] ${className}`}
     >
       {children}
     </section>
