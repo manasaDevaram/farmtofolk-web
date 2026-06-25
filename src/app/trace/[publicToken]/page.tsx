@@ -3,6 +3,7 @@ import { FarmMediaCard } from "@/components/trace/FarmMediaCard";
 import { FarmerCard } from "@/components/trace/FarmerCard";
 import { MoneyBreakdownCard } from "@/components/trace/MoneyBreakdownCard";
 import { ProductDetailsCard } from "@/components/trace/ProductDetailsCard";
+import { ErrorState } from "@/components/trace/ErrorState";
 import { TraceFooter } from "@/components/trace/TraceFooter";
 import { TraceHero } from "@/components/trace/TraceHero";
 import { TrustSummaryCard } from "@/components/trace/TrustSummaryCard";
@@ -16,7 +17,18 @@ export default async function PublicTracePage({
   params: Promise<{ publicToken: string }>;
 }) {
   const { publicToken } = await params;
-  const trace = await getPublicTrace(publicToken);
+  const trace = await getPublicTrace(publicToken).catch((error: unknown) => {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "We could not load this trace page right now.";
+
+    return { error: message };
+  });
+
+  if ("error" in trace) {
+    return <ErrorState message={trace.error} />;
+  }
 
   return (
     <main className="min-h-screen bg-[#f8f3e9] px-3 py-3 text-stone-950 sm:px-6 sm:py-6">

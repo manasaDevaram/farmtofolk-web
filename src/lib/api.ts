@@ -13,6 +13,7 @@ export async function getPublicTrace(
   let response: Response;
 
   try {
+    console.log("API URL:", endpoint);
     response = await fetch(endpoint, { cache: "no-store" });
   } catch {
     throw new Error(
