@@ -139,6 +139,25 @@ describe("public trace page", () => {
     expect(screen.queryByText(/Scanned/i)).not.toBeInTheDocument();
   });
 
+  it("renders readable page error when trace API fails", async () => {
+    vi.mocked(getPublicTrace).mockRejectedValueOnce(
+      new Error("Unable to reach FarmToFolk trace service."),
+    );
+
+    const Page = await PublicTracePage({
+      params: Promise.resolve({ publicToken: "offline-token" }),
+    });
+
+    render(Page);
+
+    expect(
+      screen.getByRole("heading", { name: /Trace details unavailable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Unable to reach FarmToFolk trace service."),
+    ).toBeInTheDocument();
+  });
+
   it("renders farmer card summary", () => {
     render(<FarmerCard farmer={sampleTrace.farmer} />);
 
