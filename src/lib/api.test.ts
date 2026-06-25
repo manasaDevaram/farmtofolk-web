@@ -8,7 +8,6 @@ describe("getPublicTrace", () => {
   });
 
   it("fetches the public trace endpoint without caching", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://api.example.test/");
     const fetchMock = vi.fn(async () =>
       Response.json({ batch: { cropName: "Tomatoes" } }),
     );
@@ -18,7 +17,7 @@ describe("getPublicTrace", () => {
 
     expect(trace.batch?.cropName).toBe("Tomatoes");
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://api.example.test/api/public/trace/public%20token",
+      "/api/backend/api/public/trace/public%20token",
       { cache: "no-store" },
     );
   });

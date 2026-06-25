@@ -20,14 +20,10 @@ import type {
   BatchListItem,
 } from "@/types/admin";
 
-const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const API_PROXY_BASE_URL = "/api/backend";
 
-// Resolve the Spring Boot API host from env so local and deployed builds can differ.
 function baseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-    DEFAULT_API_BASE_URL
-  );
+  return API_PROXY_BASE_URL;
 }
 
 async function request<T>(

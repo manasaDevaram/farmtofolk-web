@@ -1,14 +1,11 @@
 import type { PublicTraceResponse } from "@/types/public-trace";
 
-const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const API_PROXY_BASE_URL = "/api/backend";
 
 export async function getPublicTrace(
   publicToken: string,
 ): Promise<PublicTraceResponse> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-    DEFAULT_API_BASE_URL;
-  const endpoint = `${baseUrl}/api/public/trace/${encodeURIComponent(publicToken)}`;
+  const endpoint = `${API_PROXY_BASE_URL}/api/public/trace/${encodeURIComponent(publicToken)}`;
 
   let response: Response;
 
