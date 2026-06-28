@@ -89,15 +89,19 @@ export function AdminHomeView() {
         actions={
           <>
             <ButtonLink href="/admin/farmers/new">Add Farmer</ButtonLink>
-            <ButtonLink href="/admin/farms/new" variant="secondary">Add Farm</ButtonLink>
-            <ButtonLink href="/admin/batches/new" variant="secondary">Add Batch</ButtonLink>
+            <ButtonLink href="/admin/farms/new" variant="secondary">
+              Add Farm
+            </ButtonLink>
+            <ButtonLink href="/admin/batches/new" variant="secondary">
+              Add Batch
+            </ButtonLink>
           </>
         }
         description="Here is what is happening across your farm network today."
         eyebrow="Farm network"
         title="Admin Dashboard"
       />
-      {loading ? <LoadingState label="Gathering today&apos;s farm records..." /> : null}
+      {loading ? <LoadingState label="Gathering today's farm records..." /> : null}
       {error ? <ErrorState message={error} onRetry={load} /> : null}
       {summary ? <DashboardSummaryView summary={summary} /> : null}
     </AdminShell>
@@ -105,7 +109,11 @@ export function AdminHomeView() {
 }
 
 function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
-  const money = new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" });
+  const money = new Intl.NumberFormat("en-IN", {
+    currency: "INR",
+    maximumFractionDigits: 0,
+    style: "currency",
+  });
   const recentVerifications = Array.isArray(summary.recentVerifications)
     ? summary.recentVerifications
     : [];
@@ -116,45 +124,142 @@ function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard href="/admin/farmers" label="Total farmers" note={`${summary.activeFarmers} active`} tone="green" value={summary.totalFarmers} />
-        <MetricCard href="/admin/farms" label="Total farms" note="Registered holdings" tone="kraft" value={summary.totalFarms} />
-        <MetricCard href="/admin/batches" label="Total batches" note="Traceable produce lots" tone="green" value={summary.totalBatches} />
-        <MetricCard label="Pending payments" note={`${summary.pendingPaymentBatchCount} batches`} tone="clay" value={money.format(summary.pendingPaymentsAmount || 0)} />
+        <MetricCard
+          href="/admin/farmers"
+          label="Total farmers"
+          note={`${summary.activeFarmers} active`}
+          tone="green"
+          value={summary.totalFarmers}
+        />
+        <MetricCard
+          href="/admin/farms"
+          label="Total farms"
+          note="Registered holdings"
+          tone="kraft"
+          value={summary.totalFarms}
+        />
+        <MetricCard
+          href="/admin/batches"
+          label="Total batches"
+          note="Traceable produce lots"
+          tone="green"
+          value={summary.totalBatches}
+        />
+        <MetricCard
+          label="Pending payments"
+          note={`${summary.pendingPaymentBatchCount} batches`}
+          tone="clay"
+          value={money.format(summary.pendingPaymentsAmount || 0)}
+        />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
         <Card>
           <div className="flex items-center justify-between gap-4">
-            <div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-green-700)]">Field activity</p><h2 className="mt-1 text-2xl font-bold">Recent verifications</h2></div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-green-700)]">
+                Field activity
+              </p>
+              <h2 className="mt-1 text-2xl font-bold">Recent verifications</h2>
+            </div>
             <span className="ftf-stamp">{recentVerificationCount} recent</span>
           </div>
           <div className="mt-5 divide-y divide-[var(--ftf-border)]">
-            {recentVerifications.length ? recentVerifications.map((verification) => (
-              <div className="flex items-center justify-between gap-4 py-3" key={verification.id}>
-                <div><p className="font-bold">{verification.verificationType || "Farm verification"}</p><p className="mt-0.5 text-sm text-[var(--ftf-muted)]">{verification.verificationDate}</p></div>
-                <span className="ftf-stamp">{verification.status || "Recorded"}</span>
-              </div>
-            )) : <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">{recentVerificationCount ? `${recentVerificationCount} recent verifications recorded.` : "No recent verification activity."}</p>}
+            {recentVerifications.length ? (
+              recentVerifications.map((verification) => (
+                <div className="flex items-center justify-between gap-4 py-3" key={verification.id}>
+                  <div>
+                    <p className="font-bold">
+                      {verification.verificationType || "Farm verification"}
+                    </p>
+                    <p className="mt-0.5 text-sm text-[var(--ftf-muted)]">
+                      {verification.verificationDate}
+                    </p>
+                  </div>
+                  <span className="ftf-stamp">{verification.status || "Recorded"}</span>
+                </div>
+              ))
+            ) : (
+              <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">
+                {recentVerificationCount
+                  ? `${recentVerificationCount} recent verifications recorded.`
+                  : "No recent verification activity."}
+              </p>
+            )}
           </div>
         </Card>
 
         <Card className="ftf-kraft-card">
-          <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-soil)]">Traceability reach</p>
+          <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-soil)]">
+            Traceability reach
+          </p>
           <div className="mt-3 flex items-end justify-between gap-4">
-            <div><p className="ftf-display text-5xl font-bold text-[var(--ftf-green-900)]">{summary.totalQrCodes}</p><p className="mt-1 font-bold text-[var(--ftf-soil)]">QR codes generated</p></div>
-            <div className="grid h-20 w-20 grid-cols-4 gap-1 rounded-xl border border-[var(--ftf-soil)]/20 bg-white/40 p-2" aria-hidden="true">{Array.from({ length: 16 }, (_, index) => <span className={index % 3 === 0 || index === 6 || index === 11 ? "bg-[var(--ftf-green-900)]" : "bg-transparent"} key={index} />)}</div>
+            <div>
+              <p className="ftf-display text-5xl font-bold text-[var(--ftf-green-900)]">
+                {summary.totalQrCodes}
+              </p>
+              <p className="mt-1 font-bold text-[var(--ftf-soil)]">QR codes generated</p>
+            </div>
+            <div
+              className="grid h-20 w-20 grid-cols-4 gap-1 rounded-xl border border-[var(--ftf-soil)]/20 bg-white/40 p-2"
+              aria-hidden="true"
+            >
+              {Array.from({ length: 16 }, (_, index) => (
+                <span
+                  className={
+                    index % 3 === 0 || index === 6 || index === 11
+                      ? "bg-[var(--ftf-green-900)]"
+                      : "bg-transparent"
+                  }
+                  key={index}
+                />
+              ))}
+            </div>
           </div>
-          <p className="mt-6 text-sm leading-6 text-[var(--ftf-soil)]/75">Each code gives customers a direct path to the farmer, farm, verification evidence, and batch journey.</p>
+          <p className="mt-6 text-sm leading-6 text-[var(--ftf-soil)]/75">
+            Each code gives customers a direct path to the farmer, farm, verification evidence, and
+            batch journey.
+          </p>
         </Card>
       </div>
     </>
   );
 }
 
-function MetricCard({ href, label, note, tone, value }: { href?: string; label: string; note: string; tone: "green" | "kraft" | "clay"; value: number | string }) {
-  const content = <><div className={`ftf-watercolor-icon ftf-tone-${tone}`}><span className="ftf-display text-xl font-bold">{label.slice(0, 1)}</span></div><div className="min-w-0"><p className="text-2xl font-bold leading-none sm:text-3xl">{value}</p><p className="mt-2 text-sm font-bold">{label}</p><p className="mt-0.5 text-xs text-[var(--ftf-muted)]">{note}</p></div></>;
-  const className = "ftf-card flex min-h-32 items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-[0_15px_35px_rgba(59,45,25,.12)]";
-  return href ? <Link className={className} href={href}>{content}</Link> : <section className={className}>{content}</section>;
+function MetricCard({
+  href,
+  label,
+  note,
+  tone,
+  value,
+}: {
+  href?: string;
+  label: string;
+  note: string;
+  tone: "green" | "kraft" | "clay";
+  value: number | string;
+}) {
+  const content = (
+    <>
+      <div className={`ftf-watercolor-icon ftf-tone-${tone}`}>
+        <span className="ftf-display text-xl font-bold">{label.slice(0, 1)}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-2xl font-bold leading-none sm:text-3xl">{value}</p>
+        <p className="mt-2 text-sm font-bold">{label}</p>
+        <p className="mt-0.5 text-xs text-[var(--ftf-muted)]">{note}</p>
+      </div>
+    </>
+  );
+  const className =
+    "ftf-card flex min-h-32 items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-[0_15px_35px_rgba(59,45,25,.12)]";
+  return href ? (
+    <Link className={className} href={href}>
+      {content}
+    </Link>
+  ) : (
+    <section className={className}>{content}</section>
+  );
 }
 
 // FarmersListView loads all farmers and filters them locally for fast admin lookup.
@@ -200,37 +305,60 @@ export function FarmersListView() {
         title="Farmers"
       />
       <Card>
-        <input className={inputClass} placeholder="Search by name, phone, village, district..." value={query} onChange={(event) => setQuery(event.target.value)} />
+        <input
+          className={inputClass}
+          placeholder="Search by name, phone, village, district..."
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
       </Card>
       <div className="mt-4">
         {loading ? <LoadingState label="Loading farmers..." /> : null}
         {error ? <ErrorState message={error} onRetry={load} /> : null}
-        {!loading && !error && !filtered.length ? <EmptyState action={<ButtonLink href="/admin/farmers/new">Add Farmer</ButtonLink>} message="No farmers match your search." /> : null}
+        {!loading && !error && !filtered.length ? (
+          <EmptyState
+            action={<ButtonLink href="/admin/farmers/new">Add Farmer</ButtonLink>}
+            message="No farmers match your search."
+          />
+        ) : null}
         {!loading && !error && filtered.length ? (
           <div className="grid gap-3">
             {filtered.map((farmer) => (
               <Card key={farmer.id}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex gap-4">
-                    <MediaThumb
-                      type="image"
-                      url={farmer.profilePhotoUrl}
-                    />
+                    <MediaThumb type="image" url={farmer.profilePhotoUrl} />
                     <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-black">{farmer.name}</h2>
-                      <StatusBadge active={farmer.active} />
-                    </div>
-                    <p className="mt-1 font-bold text-stone-600">{farmer.phone}</p>
-                    <p className="text-sm text-stone-500">{farmer.village}, {farmer.district}, {farmer.state} - Joined {farmer.joinedDate}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-xl font-black">{farmer.name}</h2>
+                        <StatusBadge active={farmer.active} />
+                      </div>
+                      <p className="mt-1 font-bold text-stone-600">{farmer.phone}</p>
+                      <p className="text-sm text-stone-500">
+                        {farmer.village}, {farmer.district}, {farmer.state} - Joined{" "}
+                        {farmer.joinedDate}
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <ButtonLink href={`/admin/farmers/${farmer.id}`} variant="secondary">Open</ButtonLink>
-                    <ButtonLink href={`/admin/farmers/${farmer.id}/edit`} variant="secondary">Edit</ButtonLink>
-                    <ButtonLink href={`/admin/farmers/${farmer.id}/farms`} variant="secondary">View Farms</ButtonLink>
-                    <ButtonLink href={`/admin/farmers/${farmer.id}/batches`} variant="secondary">View Batches</ButtonLink>
-                    <Button onClick={() => void toggle(farmer)} variant={farmer.active ? "danger" : "primary"}>{farmer.active ? "Deactivate" : "Activate"}</Button>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}`} variant="secondary">
+                      Open
+                    </ButtonLink>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}/edit`} variant="secondary">
+                      Edit
+                    </ButtonLink>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}/farms`} variant="secondary">
+                      View Farms
+                    </ButtonLink>
+                    <ButtonLink href={`/admin/farmers/${farmer.id}/batches`} variant="secondary">
+                      View Batches
+                    </ButtonLink>
+                    <Button
+                      onClick={() => void toggle(farmer)}
+                      variant={farmer.active ? "danger" : "primary"}
+                    >
+                      {farmer.active ? "Deactivate" : "Activate"}
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -251,7 +379,11 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
 
   useEffect(() => {
     if (!farmerId) return;
-    farmerApi.get(farmerId).then(setFarmer).catch((err) => setError(err.message)).finally(() => setLoading(false));
+    farmerApi
+      .get(farmerId)
+      .then(setFarmer)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, [farmerId]);
 
   return (
@@ -263,7 +395,9 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
         <FarmerForm
           initial={farmer}
           onSubmit={async (payload, active) => {
-            const saved = farmerId ? await farmerApi.update(farmerId, payload) : await farmerApi.create(payload);
+            const saved = farmerId
+              ? await farmerApi.update(farmerId, payload)
+              : await farmerApi.create(payload);
             if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
             router.push(`/admin/farmers/${saved.id}`);
           }}
@@ -314,20 +448,26 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
             actions={
               <>
                 <ButtonLink href={`/admin/farmers/${farmer.id}/edit`}>Edit Farmer</ButtonLink>
-                <ButtonLink href={`/admin/farms/new?farmerId=${farmer.id}`} variant="secondary">Add Farm</ButtonLink>
-                <ButtonLink href={`/admin/batches/new?farmerId=${farmer.id}`} variant="secondary">Add Batch</ButtonLink>
+                <ButtonLink href={`/admin/farms/new?farmerId=${farmer.id}`} variant="secondary">
+                  Add Farm
+                </ButtonLink>
+                <ButtonLink href={`/admin/batches/new?farmerId=${farmer.id}`} variant="secondary">
+                  Add Batch
+                </ButtonLink>
               </>
             }
             description={`${farmer.village}, ${farmer.district}, ${farmer.state}`}
             title={farmer.name}
           />
           <Card>
-            <InfoGrid items={[
-              { label: "Phone", value: farmer.phone },
-              { label: "Joined", value: farmer.joinedDate },
-              { label: "Status", value: <StatusBadge active={farmer.active} /> },
-              { label: "Bio", value: farmer.bio },
-            ]} />
+            <InfoGrid
+              items={[
+                { label: "Phone", value: farmer.phone },
+                { label: "Joined", value: farmer.joinedDate },
+                { label: "Status", value: <StatusBadge active={farmer.active} /> },
+                { label: "Bio", value: farmer.bio },
+              ]}
+            />
           </Card>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <FarmerMediaUpload
@@ -361,7 +501,13 @@ function RelatedLists({ batches, farms }: { batches: Batch[]; farms: Farm[] }) {
         <h2 className="text-xl font-black">Farms</h2>
         <div className="mt-3 space-y-2">
           {farms.map((farm) => (
-            <Link className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50" href={`/admin/farms/${farm.id}`} key={farm.id}>{farm.farmName}</Link>
+            <Link
+              className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50"
+              href={`/admin/farms/${farm.id}`}
+              key={farm.id}
+            >
+              {farm.farmName}
+            </Link>
           ))}
           {!farms.length ? <p className="text-stone-500">No farms yet.</p> : null}
         </div>
@@ -370,7 +516,13 @@ function RelatedLists({ batches, farms }: { batches: Batch[]; farms: Farm[] }) {
         <h2 className="text-xl font-black">Batches</h2>
         <div className="mt-3 space-y-2">
           {batches.map((batch) => (
-            <Link className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50" href={`/admin/batches/${batch.id}`} key={batch.id}>{batch.batchCode} - {batch.cropName}</Link>
+            <Link
+              className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50"
+              href={`/admin/batches/${batch.id}`}
+              key={batch.id}
+            >
+              {batch.batchCode} - {batch.cropName}
+            </Link>
           ))}
           {!batches.length ? <p className="text-stone-500">No batches yet.</p> : null}
         </div>
@@ -391,7 +543,10 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
     setError("");
     try {
       if (farmerId) {
-        const [owner, ownerFarms] = await Promise.all([farmerApi.get(farmerId), farmApi.listByFarmer(farmerId)]);
+        const [owner, ownerFarms] = await Promise.all([
+          farmerApi.get(farmerId),
+          farmApi.listByFarmer(farmerId),
+        ]);
         setFarmer(owner);
         setFarms(ownerFarms.map((farm) => ({ ...farm, farmer: owner })));
       } else {
@@ -410,7 +565,16 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
 
   return (
     <AdminShell>
-      <PageHeader actions={<ButtonLink href={farmerId ? `/admin/farms/new?farmerId=${farmerId}` : "/admin/farms/new"}>Add Farm</ButtonLink>} title={farmer ? `${farmer.name}'s Farms` : "Farms"} />
+      <PageHeader
+        actions={
+          <ButtonLink
+            href={farmerId ? `/admin/farms/new?farmerId=${farmerId}` : "/admin/farms/new"}
+          >
+            Add Farm
+          </ButtonLink>
+        }
+        title={farmer ? `${farmer.name}'s Farms` : "Farms"}
+      />
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} onRetry={load} /> : null}
       {!loading && !error && !farms.length ? <EmptyState message="No farms found." /> : null}
@@ -420,14 +584,27 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-xl font-black">{farm.farmName}</h2>
-                <p className="font-bold text-stone-600">{farm.farmer?.name || farm.farmerName || "Unknown farmer"}</p>
-                <p className="text-sm text-stone-500">{farm.village}, {farm.district}, {farm.state} - {fmt(farm.sizeAcres)} acres - {farm.farmingType}</p>
-                <p className="text-xs text-stone-400">Lat/Lng: {fmt(farm.latitude)} / {fmt(farm.longitude)}</p>
+                <p className="font-bold text-stone-600">
+                  {farm.farmer?.name || farm.farmerName || "Unknown farmer"}
+                </p>
+                <p className="text-sm text-stone-500">
+                  {farm.village}, {farm.district}, {farm.state} - {fmt(farm.sizeAcres)} acres -{" "}
+                  {farm.farmingType}
+                </p>
+                <p className="text-xs text-stone-400">
+                  Lat/Lng: {fmt(farm.latitude)} / {fmt(farm.longitude)}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ButtonLink href={`/admin/farms/${farm.id}`} variant="secondary">Open</ButtonLink>
-                <ButtonLink href={`/admin/farms/${farm.id}/edit`} variant="secondary">Edit</ButtonLink>
-                <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}>Add Batch</ButtonLink>
+                <ButtonLink href={`/admin/farms/${farm.id}`} variant="secondary">
+                  Open
+                </ButtonLink>
+                <ButtonLink href={`/admin/farms/${farm.id}/edit`} variant="secondary">
+                  Edit
+                </ButtonLink>
+                <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}>
+                  Add Batch
+                </ButtonLink>
               </div>
             </div>
           </Card>
@@ -469,7 +646,9 @@ export function FarmFormView({ farmId }: { farmId?: string }) {
           initial={farm}
           lockedFarmerId={lockedFarmer}
           onSubmit={async (payload) => {
-            const saved = farmId ? await farmApi.update(farmId, payload) : await farmApi.create(payload);
+            const saved = farmId
+              ? await farmApi.update(farmId, payload)
+              : await farmApi.create(payload);
             router.push(`/admin/farms/${saved.id}`);
           }}
           onUnlockFarmer={() => setLockedFarmer(null)}
@@ -495,13 +674,14 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
     setLoading(true);
     setError("");
     try {
-      const [nextFarm, nextMedia, nextVerification, nextVerifications, nextBatches] = await Promise.all([
-        farmApi.get(farmId),
-        mediaApi.list(farmId),
-        verificationApi.latest(farmId),
-        verificationApi.list(farmId),
-        batchApi.listByFarm(farmId),
-      ]);
+      const [nextFarm, nextMedia, nextVerification, nextVerifications, nextBatches] =
+        await Promise.all([
+          farmApi.get(farmId),
+          mediaApi.list(farmId),
+          verificationApi.latest(farmId),
+          verificationApi.list(farmId),
+          batchApi.listByFarm(farmId),
+        ]);
       setFarm(nextFarm);
       setMedia(nextMedia);
       setVerification(nextVerification);
@@ -529,23 +709,35 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
             actions={
               <>
                 <ButtonLink href={`/admin/farms/${farm.id}/edit`}>Edit Farm</ButtonLink>
-                <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`} variant="secondary">Add Batch</ButtonLink>
+                <ButtonLink
+                  href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}
+                  variant="secondary"
+                >
+                  Add Batch
+                </ButtonLink>
               </>
             }
             title={farm.farmName}
           />
           <Card>
-            <InfoGrid items={[
-              { label: "Location", value: `${farm.village}, ${farm.district}, ${farm.state}` },
-              { label: "Size", value: farm.sizeAcres ? `${farm.sizeAcres} acres` : null },
-              { label: "Farming Type", value: farm.farmingType },
-              { label: "Latitude", value: farm.latitude },
-              { label: "Longitude", value: farm.longitude },
-              { label: "Latest Verification", value: verification?.status },
-            ]} />
+            <InfoGrid
+              items={[
+                { label: "Location", value: `${farm.village}, ${farm.district}, ${farm.state}` },
+                { label: "Size", value: farm.sizeAcres ? `${farm.sizeAcres} acres` : null },
+                { label: "Farming Type", value: farm.farmingType },
+                { label: "Latitude", value: farm.latitude },
+                { label: "Longitude", value: farm.longitude },
+                { label: "Latest Verification", value: verification?.status },
+              ]}
+            />
           </Card>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <FarmMediaPanel media={media} onDelete={setDeleteId} onUploaded={load} farmId={farm.id} />
+            <FarmMediaPanel
+              media={media}
+              onDelete={setDeleteId}
+              onUploaded={load}
+              farmId={farm.id}
+            />
             <VerificationPanel
               evidence={evidence}
               farmId={farm.id}
@@ -563,7 +755,15 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
           <Card className="mt-4">
             <h2 className="text-xl font-black">Batches From This Farm</h2>
             <div className="mt-3 space-y-2">
-              {batches.map((batch) => <Link className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50" href={`/admin/batches/${batch.id}`} key={batch.id}>{batch.batchCode} - {batch.cropName}</Link>)}
+              {batches.map((batch) => (
+                <Link
+                  className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50"
+                  href={`/admin/batches/${batch.id}`}
+                  key={batch.id}
+                >
+                  {batch.batchCode} - {batch.cropName}
+                </Link>
+              ))}
               {!batches.length ? <p className="text-stone-500">No batches yet.</p> : null}
             </div>
           </Card>
@@ -574,7 +774,10 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
           message="This media item will be permanently removed."
           onCancel={() => setDeleteId(null)}
           onConfirm={() => {
-            void mediaApi.delete(deleteId).then(load).finally(() => setDeleteId(null));
+            void mediaApi
+              .delete(deleteId)
+              .then(load)
+              .finally(() => setDeleteId(null));
           }}
           title="Delete media?"
         />
@@ -583,7 +786,17 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
   );
 }
 
-function FarmMediaPanel({ farmId, media, onDelete, onUploaded }: { farmId: string; media: FarmMedia[]; onDelete: (id: string) => void; onUploaded: () => void }) {
+function FarmMediaPanel({
+  farmId,
+  media,
+  onDelete,
+  onUploaded,
+}: {
+  farmId: string;
+  media: FarmMedia[];
+  onDelete: (id: string) => void;
+  onUploaded: () => void;
+}) {
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -613,18 +826,33 @@ function FarmMediaPanel({ farmId, media, onDelete, onUploaded }: { farmId: strin
           onFile={setFile}
           previewUrl={previewUrl}
         />
-        <input className={inputClass} placeholder="Caption" value={caption} onChange={(event) => setCaption(event.target.value)} />
-        <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : "Upload Farm Media"}</Button>
+        <input
+          className={inputClass}
+          placeholder="Caption"
+          value={caption}
+          onChange={(event) => setCaption(event.target.value)}
+        />
+        <Button disabled={!file || saving} onClick={() => void upload()}>
+          {saving ? "Uploading..." : "Upload Farm Media"}
+        </Button>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {media.map((item) => (
           <div className="rounded-2xl bg-stone-50 p-2" key={item.id}>
-            <MediaPreview className="aspect-square rounded-xl" type={item.contentType || item.mediaType} url={item.mediaUrl} />
+            <MediaPreview
+              className="aspect-square rounded-xl"
+              type={item.contentType || item.mediaType}
+              url={item.mediaUrl}
+            />
             <p className="mt-2 text-xs font-bold">{item.caption || item.mediaType}</p>
-            <Button onClick={() => onDelete(item.id)} variant="danger">Delete</Button>
+            <Button onClick={() => onDelete(item.id)} variant="danger">
+              Delete
+            </Button>
           </div>
         ))}
-        {!media.length ? <p className="col-span-full text-sm text-stone-500">No farm media uploaded yet.</p> : null}
+        {!media.length ? (
+          <p className="col-span-full text-sm text-stone-500">No farm media uploaded yet.</p>
+        ) : null}
       </div>
     </Card>
   );
@@ -665,10 +893,22 @@ function FarmerMediaUpload({
     <Card>
       <h2 className="text-xl font-black">{label}</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr]">
-        <MediaPreview className="aspect-square rounded-2xl" type={previewType} url={previewUrl || currentUrl} />
+        <MediaPreview
+          className="aspect-square rounded-2xl"
+          type={previewType}
+          url={previewUrl || currentUrl}
+        />
         <div className="grid gap-3">
-          <DropUpload accept={accept} file={file} label={`Upload ${label.toLowerCase()}`} onFile={setFile} previewUrl={previewUrl} />
-          <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : `Save ${label}`}</Button>
+          <DropUpload
+            accept={accept}
+            file={file}
+            label={`Upload ${label.toLowerCase()}`}
+            onFile={setFile}
+            previewUrl={previewUrl}
+          />
+          <Button disabled={!file || saving} onClick={() => void upload()}>
+            {saving ? "Uploading..." : `Save ${label}`}
+          </Button>
         </div>
       </div>
     </Card>
@@ -712,22 +952,41 @@ function EvidenceUploader({
         onFile={setFile}
         previewUrl={previewUrl}
       />
-      <input className={inputClass} placeholder="Evidence caption" value={caption} onChange={(event) => setCaption(event.target.value)} />
+      <input
+        className={inputClass}
+        placeholder="Evidence caption"
+        value={caption}
+        onChange={(event) => setCaption(event.target.value)}
+      />
       <label className="flex items-center gap-2 text-sm font-bold">
-        <input checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} type="checkbox" />
+        <input
+          checked={isPublic}
+          onChange={(event) => setIsPublic(event.target.checked)}
+          type="checkbox"
+        />
         Public on customer trace page
       </label>
-      <Button disabled={!file || saving} onClick={() => void upload()}>{saving ? "Uploading..." : "Upload Evidence"}</Button>
+      <Button disabled={!file || saving} onClick={() => void upload()}>
+        {saving ? "Uploading..." : "Upload Evidence"}
+      </Button>
       <div className="grid grid-cols-2 gap-3">
         {evidence.map((item) => (
           <div className="rounded-2xl bg-white p-2 shadow-sm" key={item.id}>
-            <MediaPreview className="aspect-square rounded-xl" type={item.contentType || item.fileType} url={item.fileUrl} />
+            <MediaPreview
+              className="aspect-square rounded-xl"
+              type={item.contentType || item.fileType}
+              url={item.fileUrl}
+            />
             <p className="mt-2 text-xs font-bold">{item.caption || item.fileType}</p>
             <p className="text-xs text-stone-500">{item.isPublic ? "Public" : "Private"}</p>
-            <Button onClick={() => void onDelete(item.id)} variant="danger">Delete</Button>
+            <Button onClick={() => void onDelete(item.id)} variant="danger">
+              Delete
+            </Button>
           </div>
         ))}
-        {!evidence.length ? <p className="col-span-full text-sm text-stone-500">No evidence uploaded yet.</p> : null}
+        {!evidence.length ? (
+          <p className="col-span-full text-sm text-stone-500">No evidence uploaded yet.</p>
+        ) : null}
       </div>
     </div>
   );
@@ -755,26 +1014,61 @@ function DropUpload({
         onFile(event.dataTransfer.files?.[0] ?? null);
       }}
     >
-      <input accept={accept} className="sr-only" type="file" onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
-      {previewUrl ? <MediaPreview className="mx-auto mb-3 h-28 w-28 rounded-xl" type={file?.type} url={previewUrl} /> : null}
+      <input
+        accept={accept}
+        className="sr-only"
+        type="file"
+        onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+      />
+      {previewUrl ? (
+        <MediaPreview
+          className="mx-auto mb-3 h-28 w-28 rounded-xl"
+          type={file?.type}
+          url={previewUrl}
+        />
+      ) : null}
       <span className="font-black text-emerald-950">{file ? file.name : label}</span>
       <span className="mt-1 block text-xs text-emerald-800">Click to browse or drag and drop</span>
     </label>
   );
 }
 
-function MediaPreview({ className, type, url }: { className: string; type?: string | null; url?: string | null }) {
+function MediaPreview({
+  className,
+  type,
+  url,
+}: {
+  className: string;
+  type?: string | null;
+  url?: string | null;
+}) {
   if (!url) {
-    return <div className={`${className} flex items-center justify-center bg-emerald-50 text-sm font-black text-emerald-800`}>No media</div>;
+    return (
+      <div
+        className={`${className} flex items-center justify-center bg-emerald-50 text-sm font-black text-emerald-800`}
+      >
+        No media
+      </div>
+    );
   }
   if (isVideoFile(type, url)) {
     return <video className={`${className} bg-stone-950 object-cover`} controls src={url} />;
   }
   if (isImageFile(type, url) || type === "image") {
-    return <div className={`${className} bg-emerald-100 bg-cover bg-center`} style={{ backgroundImage: `url(${url})` }} />;
+    return (
+      <div
+        className={`${className} bg-emerald-100 bg-cover bg-center`}
+        style={{ backgroundImage: `url(${url})` }}
+      />
+    );
   }
   return (
-    <a className={`${className} flex items-center justify-center bg-stone-100 p-3 text-center text-sm font-black text-stone-700`} href={url} rel="noreferrer" target="_blank">
+    <a
+      className={`${className} flex items-center justify-center bg-stone-100 p-3 text-center text-sm font-black text-stone-700`}
+      href={url}
+      rel="noreferrer"
+      target="_blank"
+    >
       Open file
     </a>
   );
@@ -836,7 +1130,10 @@ function VerificationPanel({
     try {
       if (form.checklistJson) JSON.parse(form.checklistJson);
       setSaving(true);
-      await verificationApi.create(farmId, { ...form, nextVerificationDue: form.nextVerificationDue || null });
+      await verificationApi.create(farmId, {
+        ...form,
+        nextVerificationDue: form.nextVerificationDue || null,
+      });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save verification.");
@@ -848,11 +1145,23 @@ function VerificationPanel({
   return (
     <Card>
       <h2 className="text-xl font-black">Verification</h2>
-      {latest ? <p className="mt-2 text-sm font-bold text-emerald-800">Latest: {latest.status} on {latest.verificationDate}</p> : <p className="mt-2 text-sm text-stone-500">No verification yet.</p>}
+      {latest ? (
+        <p className="mt-2 text-sm font-bold text-emerald-800">
+          Latest: {latest.status} on {latest.verificationDate}
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-stone-500">No verification yet.</p>
+      )}
       {latest ? (
         <div className="mt-4">
-          <h3 className="text-sm font-black uppercase text-stone-500">Evidence for latest verification</h3>
-          <EvidenceUploader onDelete={onEvidenceDelete} onUpload={onEvidenceUpload} evidence={evidence} />
+          <h3 className="text-sm font-black uppercase text-stone-500">
+            Evidence for latest verification
+          </h3>
+          <EvidenceUploader
+            onDelete={onEvidenceDelete}
+            onUpload={onEvidenceUpload}
+            evidence={evidence}
+          />
         </div>
       ) : null}
       {verifications.length ? (
@@ -861,7 +1170,9 @@ function VerificationPanel({
           <div className="mt-2 space-y-2">
             {verifications.map((item) => (
               <div className="rounded-xl bg-white p-3 text-sm" key={item.id}>
-                <p className="font-black">{item.status || "Recorded"} - {item.verificationDate}</p>
+                <p className="font-black">
+                  {item.status || "Recorded"} - {item.verificationDate}
+                </p>
                 <p className="text-stone-600">{item.observations || "No observations added."}</p>
               </div>
             ))}
@@ -869,16 +1180,65 @@ function VerificationPanel({
         </div>
       ) : null}
       <div className="mt-4 grid gap-3">
-        <input className={inputClass} type="date" value={form.verificationDate} onChange={(event) => setForm({ ...form, verificationDate: event.target.value })} />
-        <input className={inputClass} placeholder="Verification type" value={form.verificationType} onChange={(event) => setForm({ ...form, verificationType: event.target.value })} />
-        <select className={inputClass} value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>VERIFIED</option><option>PENDING</option><option>REJECTED</option></select>
-        <textarea className={`${inputClass} min-h-24`} placeholder="Checklist JSON" value={form.checklistJson ?? ""} onChange={(event) => setForm({ ...form, checklistJson: event.target.value })} />
-        <textarea className={`${inputClass} min-h-24`} placeholder="Observations" value={form.observations ?? ""} onChange={(event) => setForm({ ...form, observations: event.target.value })} />
-        <input className={inputClass} type="date" value={form.nextVerificationDue ?? ""} onChange={(event) => setForm({ ...form, nextVerificationDue: event.target.value })} />
-        <label className="flex gap-2 text-sm font-bold"><input checked={Boolean(form.chemicalFreeClaim)} onChange={(event) => setForm({ ...form, chemicalFreeClaim: event.target.checked })} type="checkbox" /> Chemical-free claim</label>
-        <label className="flex gap-2 text-sm font-bold"><input checked={Boolean(form.agroecologyVerified)} onChange={(event) => setForm({ ...form, agroecologyVerified: event.target.checked })} type="checkbox" /> Agroecology verified</label>
+        <input
+          className={inputClass}
+          type="date"
+          value={form.verificationDate}
+          onChange={(event) => setForm({ ...form, verificationDate: event.target.value })}
+        />
+        <input
+          className={inputClass}
+          placeholder="Verification type"
+          value={form.verificationType}
+          onChange={(event) => setForm({ ...form, verificationType: event.target.value })}
+        />
+        <select
+          className={inputClass}
+          value={form.status}
+          onChange={(event) => setForm({ ...form, status: event.target.value })}
+        >
+          <option>VERIFIED</option>
+          <option>PENDING</option>
+          <option>REJECTED</option>
+        </select>
+        <textarea
+          className={`${inputClass} min-h-24`}
+          placeholder="Checklist JSON"
+          value={form.checklistJson ?? ""}
+          onChange={(event) => setForm({ ...form, checklistJson: event.target.value })}
+        />
+        <textarea
+          className={`${inputClass} min-h-24`}
+          placeholder="Observations"
+          value={form.observations ?? ""}
+          onChange={(event) => setForm({ ...form, observations: event.target.value })}
+        />
+        <input
+          className={inputClass}
+          type="date"
+          value={form.nextVerificationDue ?? ""}
+          onChange={(event) => setForm({ ...form, nextVerificationDue: event.target.value })}
+        />
+        <label className="flex gap-2 text-sm font-bold">
+          <input
+            checked={Boolean(form.chemicalFreeClaim)}
+            onChange={(event) => setForm({ ...form, chemicalFreeClaim: event.target.checked })}
+            type="checkbox"
+          />{" "}
+          Chemical-free claim
+        </label>
+        <label className="flex gap-2 text-sm font-bold">
+          <input
+            checked={Boolean(form.agroecologyVerified)}
+            onChange={(event) => setForm({ ...form, agroecologyVerified: event.target.checked })}
+            type="checkbox"
+          />{" "}
+          Agroecology verified
+        </label>
         {error ? <p className="font-bold text-red-700">{error}</p> : null}
-        <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Add Verification"}</Button>
+        <Button disabled={saving} onClick={() => void save()}>
+          {saving ? "Saving..." : "Add Verification"}
+        </Button>
       </div>
     </Card>
   );
@@ -895,7 +1255,8 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
     setError("");
     try {
       if (farmId) setBatches((await batchApi.listByFarm(farmId)) as BatchWithRelations[]);
-      else if (farmerId) setBatches((await batchApi.listByFarmer(farmerId)) as BatchWithRelations[]);
+      else if (farmerId)
+        setBatches((await batchApi.listByFarmer(farmerId)) as BatchWithRelations[]);
       else setBatches(await listAllBatches());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load batches.");
@@ -910,7 +1271,10 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
 
   return (
     <AdminShell>
-      <PageHeader actions={<ButtonLink href="/admin/batches/new">Add Batch</ButtonLink>} title="Batches" />
+      <PageHeader
+        actions={<ButtonLink href="/admin/batches/new">Add Batch</ButtonLink>}
+        title="Batches"
+      />
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} onRetry={load} /> : null}
       {!loading && !error && !batches.length ? <EmptyState message="No batches found." /> : null}
@@ -920,13 +1284,25 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-xl font-black">{batch.batchCode}</h2>
-                <p className="font-bold text-stone-600">{batch.cropName} - {batch.variety || "No variety"} - {batch.quantity} {batch.unit}</p>
-                <p className="text-sm text-stone-500">{batch.farmer?.name || batch.farmerName || "Unknown farmer"} / {batch.farm?.farmName || batch.farmName || "Unknown farm"}</p>
-                <p className="text-xs text-stone-400">Harvest {batch.harvestDate} - Packed {fmt(batch.packedDate)} - Best before {fmt(batch.bestBeforeDate)} - {batch.status}</p>
+                <p className="font-bold text-stone-600">
+                  {batch.cropName} - {batch.variety || "No variety"} - {batch.quantity} {batch.unit}
+                </p>
+                <p className="text-sm text-stone-500">
+                  {batch.farmer?.name || batch.farmerName || "Unknown farmer"} /{" "}
+                  {batch.farm?.farmName || batch.farmName || "Unknown farm"}
+                </p>
+                <p className="text-xs text-stone-400">
+                  Harvest {batch.harvestDate} - Packed {fmt(batch.packedDate)} - Best before{" "}
+                  {fmt(batch.bestBeforeDate)} - {batch.status}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <ButtonLink href={`/admin/batches/${batch.id}`} variant="secondary">Open</ButtonLink>
-                <ButtonLink href={`/admin/batches/${batch.id}/edit`} variant="secondary">Edit</ButtonLink>
+                <ButtonLink href={`/admin/batches/${batch.id}`} variant="secondary">
+                  Open
+                </ButtonLink>
+                <ButtonLink href={`/admin/batches/${batch.id}/edit`} variant="secondary">
+                  Edit
+                </ButtonLink>
               </div>
             </div>
           </Card>
@@ -949,7 +1325,11 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([farmerApi.list(), listAllFarms(), batchId ? batchApi.get(batchId) : Promise.resolve(null)])
+    Promise.all([
+      farmerApi.list(),
+      listAllFarms(),
+      batchId ? batchApi.get(batchId) : Promise.resolve(null),
+    ])
       .then(([nextFarmers, nextFarms, nextBatch]) => {
         setFarmers(nextFarmers);
         setFarms(nextFarms);
@@ -972,7 +1352,9 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
           lockedFarmerId={lockedFarmerId}
           lockedFarmId={lockedFarmId}
           onSubmit={async (payload: BatchPayload) => {
-            const saved = batchId ? await batchApi.update(batchId, payload) : await batchApi.create(payload);
+            const saved = batchId
+              ? await batchApi.update(batchId, payload)
+              : await batchApi.create(payload);
             router.push(`/admin/batches/${saved.id}`);
           }}
         />
@@ -1029,19 +1411,24 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
       {error ? <ErrorState message={error} onRetry={load} /> : null}
       {batch ? (
         <>
-          <PageHeader actions={<ButtonLink href={`/admin/batches/${batch.id}/edit`}>Edit Batch</ButtonLink>} title={batch.batchCode} />
+          <PageHeader
+            actions={<ButtonLink href={`/admin/batches/${batch.id}/edit`}>Edit Batch</ButtonLink>}
+            title={batch.batchCode}
+          />
           <Card>
-            <InfoGrid items={[
-              { label: "Crop", value: batch.cropName },
-              { label: "Farmer", value: farmer?.name },
-              { label: "Farm", value: farm?.farmName },
-              { label: "Variety", value: batch.variety },
-              { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
-              { label: "Harvest Date", value: batch.harvestDate },
-              { label: "Packed Date", value: batch.packedDate },
-              { label: "Best Before", value: batch.bestBeforeDate },
-              { label: "Status", value: batch.status },
-            ]} />
+            <InfoGrid
+              items={[
+                { label: "Crop", value: batch.cropName },
+                { label: "Farmer", value: farmer?.name },
+                { label: "Farm", value: farm?.farmName },
+                { label: "Variety", value: batch.variety },
+                { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
+                { label: "Harvest Date", value: batch.harvestDate },
+                { label: "Packed Date", value: batch.packedDate },
+                { label: "Best Before", value: batch.bestBeforeDate },
+                { label: "Status", value: batch.status },
+              ]}
+            />
           </Card>
           <div className="mt-4 grid gap-4 xl:grid-cols-3">
             <TraceEventPanel batchId={batch.id} events={events} onSaved={load} />
@@ -1054,13 +1441,37 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
   );
 }
 
-function TraceEventPanel({ batchId, events, onSaved }: { batchId: string; events: TraceEvent[]; onSaved: () => void }) {
-  const [form, setForm] = useState<TraceEventPayload>({ actorUserId: null, description: "", eventTime: nowLocal(), eventType: "HARVESTED", location: "", metadataJson: "" });
+function TraceEventPanel({
+  batchId,
+  events,
+  onSaved,
+}: {
+  batchId: string;
+  events: TraceEvent[];
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<TraceEventPayload>({
+    actorUserId: null,
+    description: "",
+    eventTime: nowLocal(),
+    eventType: "HARVESTED",
+    location: "",
+    metadataJson: "",
+  });
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
-    await traceEventApi.create(batchId, { ...form, eventTime: new Date(form.eventTime).toISOString(), actorUserId: form.actorUserId || null, location: form.location || null, description: form.description || null, metadataJson: form.metadataJson || null }).finally(() => setSaving(false));
+    await traceEventApi
+      .create(batchId, {
+        ...form,
+        eventTime: new Date(form.eventTime).toISOString(),
+        actorUserId: form.actorUserId || null,
+        location: form.location || null,
+        description: form.description || null,
+        metadataJson: form.metadataJson || null,
+      })
+      .finally(() => setSaving(false));
     onSaved();
   }
 
@@ -1068,22 +1479,77 @@ function TraceEventPanel({ batchId, events, onSaved }: { batchId: string; events
     <Card>
       <h2 className="text-xl font-black">Trace Events</h2>
       <div className="mt-3 space-y-2">
-        {events.map((event) => <div className="rounded-2xl bg-stone-50 p-3" key={event.id}><p className="font-black">{event.eventType}</p><p className="text-sm text-stone-600">{event.eventTime} - {event.location}</p><p className="text-sm">{event.description}</p></div>)}
+        {events.map((event) => (
+          <div className="rounded-2xl bg-stone-50 p-3" key={event.id}>
+            <p className="font-black">{event.eventType}</p>
+            <p className="text-sm text-stone-600">
+              {event.eventTime} - {event.location}
+            </p>
+            <p className="text-sm">{event.description}</p>
+          </div>
+        ))}
       </div>
       <div className="mt-4 grid gap-2">
-        <select className={inputClass} value={form.eventType} onChange={(event) => setForm({ ...form, eventType: event.target.value })}>{["HARVESTED", "PACKED", "RECEIVED_AT_MARKET", "SOLD"].map((type) => <option key={type}>{type}</option>)}</select>
-        <input className={inputClass} type="datetime-local" value={form.eventTime} onChange={(event) => setForm({ ...form, eventTime: event.target.value })} />
-        <input className={inputClass} placeholder="Location" value={form.location ?? ""} onChange={(event) => setForm({ ...form, location: event.target.value })} />
-        <textarea className={`${inputClass} min-h-20`} placeholder="Description" value={form.description ?? ""} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-        <textarea className={`${inputClass} min-h-20`} placeholder="Metadata JSON" value={form.metadataJson ?? ""} onChange={(event) => setForm({ ...form, metadataJson: event.target.value })} />
-        <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Add Trace Event"}</Button>
+        <select
+          className={inputClass}
+          value={form.eventType}
+          onChange={(event) => setForm({ ...form, eventType: event.target.value })}
+        >
+          {["HARVESTED", "PACKED", "RECEIVED_AT_MARKET", "SOLD"].map((type) => (
+            <option key={type}>{type}</option>
+          ))}
+        </select>
+        <input
+          className={inputClass}
+          type="datetime-local"
+          value={form.eventTime}
+          onChange={(event) => setForm({ ...form, eventTime: event.target.value })}
+        />
+        <input
+          className={inputClass}
+          placeholder="Location"
+          value={form.location ?? ""}
+          onChange={(event) => setForm({ ...form, location: event.target.value })}
+        />
+        <textarea
+          className={`${inputClass} min-h-20`}
+          placeholder="Description"
+          value={form.description ?? ""}
+          onChange={(event) => setForm({ ...form, description: event.target.value })}
+        />
+        <textarea
+          className={`${inputClass} min-h-20`}
+          placeholder="Metadata JSON"
+          value={form.metadataJson ?? ""}
+          onChange={(event) => setForm({ ...form, metadataJson: event.target.value })}
+        />
+        <Button disabled={saving} onClick={() => void save()}>
+          {saving ? "Saving..." : "Add Trace Event"}
+        </Button>
       </div>
     </Card>
   );
 }
 
-function PricePanel({ batchId, onSaved, price }: { batchId: string; onSaved: () => void; price: PriceBreakdown | null }) {
-  const [form, setForm] = useState<PriceBreakdownPayload>({ consumerPrice: 0, farmerPrice: 0, transportCost: 0, packingCost: 0, organizationCost: 0, platformCost: 0, currency: "INR", priceUnit: "kg" });
+function PricePanel({
+  batchId,
+  onSaved,
+  price,
+}: {
+  batchId: string;
+  onSaved: () => void;
+  price: PriceBreakdown | null;
+}) {
+  const [form, setForm] = useState<PriceBreakdownPayload>({
+    consumerPrice: 0,
+    farmerPrice: 0,
+    transportCost: 0,
+    packingCost: 0,
+    organizationCost: 0,
+    platformCost: 0,
+    currency: "INR",
+    priceUnit: "kg",
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1112,18 +1578,53 @@ function PricePanel({ batchId, onSaved, price }: { batchId: string; onSaved: () 
     <Card>
       <h2 className="text-xl font-black">Price Breakdown</h2>
       <div className="mt-3 grid gap-2">
-        {(["consumerPrice", "farmerPrice", "transportCost", "packingCost", "organizationCost", "platformCost"] as const).map((key) => (
-          <input className={inputClass} key={key} min={0} placeholder={key} type="number" value={form[key] ?? 0} onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })} />
+        {(
+          [
+            "consumerPrice",
+            "farmerPrice",
+            "transportCost",
+            "packingCost",
+            "organizationCost",
+            "platformCost",
+          ] as const
+        ).map((key) => (
+          <input
+            className={inputClass}
+            key={key}
+            min={0}
+            placeholder={key}
+            type="number"
+            value={form[key] ?? 0}
+            onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })}
+          />
         ))}
-        <input className={inputClass} value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} />
-        <input className={inputClass} value={form.priceUnit} onChange={(event) => setForm({ ...form, priceUnit: event.target.value })} />
-        <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : price ? "Update Price" : "Add Price"}</Button>
+        <input
+          className={inputClass}
+          value={form.currency}
+          onChange={(event) => setForm({ ...form, currency: event.target.value })}
+        />
+        <input
+          className={inputClass}
+          value={form.priceUnit}
+          onChange={(event) => setForm({ ...form, priceUnit: event.target.value })}
+        />
+        <Button disabled={saving} onClick={() => void save()}>
+          {saving ? "Saving..." : price ? "Update Price" : "Add Price"}
+        </Button>
       </div>
     </Card>
   );
 }
 
-function QrPanel({ batchId, onSaved, qr }: { batchId: string; onSaved: () => void; qr: QrCode | null }) {
+function QrPanel({
+  batchId,
+  onSaved,
+  qr,
+}: {
+  batchId: string;
+  onSaved: () => void;
+  qr: QrCode | null;
+}) {
   const [saving, setSaving] = useState(false);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
@@ -1153,20 +1654,35 @@ function QrPanel({ batchId, onSaved, qr }: { batchId: string; onSaved: () => voi
         <div className="mt-3 space-y-3">
           {qr.qrImageUrl ? (
             <div className="rounded-3xl bg-white p-3 shadow-inner">
-              <MediaPreview className="mx-auto aspect-square w-48 rounded-2xl" type="image" url={qr.qrImageUrl} />
+              <MediaPreview
+                className="mx-auto aspect-square w-48 rounded-2xl"
+                type="image"
+                url={qr.qrImageUrl}
+              />
             </div>
           ) : null}
           <p className="text-sm font-bold text-stone-600">Public trace URL</p>
-          <Link className="block break-all rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900" href={`/trace/${qr.publicToken}`}>{traceUrl}</Link>
+          <Link
+            className="block break-all rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900"
+            href={`/trace/${qr.publicToken}`}
+          >
+            {traceUrl}
+          </Link>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void copyTraceUrl()} variant="secondary">{copied ? "Copied" : "Copy URL"}</Button>
-            <ButtonLink href={`/trace/${qr.publicToken}`} variant="secondary">Open Trace Page</ButtonLink>
+            <Button onClick={() => void copyTraceUrl()} variant="secondary">
+              {copied ? "Copied" : "Copy URL"}
+            </Button>
+            <ButtonLink href={`/trace/${qr.publicToken}`} variant="secondary">
+              Open Trace Page
+            </ButtonLink>
           </div>
         </div>
       ) : (
         <div className="mt-3">
           <p className="mb-3 text-stone-600">No QR has been generated for this batch.</p>
-          <Button disabled={saving} onClick={() => void generate()}>{saving ? "Generating..." : "Generate QR Code"}</Button>
+          <Button disabled={saving} onClick={() => void generate()}>
+            {saving ? "Generating..." : "Generate QR Code"}
+          </Button>
         </div>
       )}
     </Card>

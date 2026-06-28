@@ -33,8 +33,7 @@ export function TraceFooter() {
             </span>
             <div>
               <p className="text-lg font-black text-stone-950">
-                Thank you! Your choice supports farmers and builds a better food
-                future.
+                Thank you! Your choice supports farmers and builds a better food future.
               </p>
               <div className="mt-3 flex flex-wrap gap-3 text-sm font-bold text-emerald-950">
                 <span>Agroecological Farming</span>

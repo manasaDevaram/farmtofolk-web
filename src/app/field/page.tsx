@@ -19,11 +19,15 @@ export default function FieldHomePage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-[var(--ftf-border)] bg-white/60 p-4">
               <h2 className="font-bold">Farmer records</h2>
-              <p className="mt-1 text-sm text-[var(--ftf-muted)]">Field access is being connected.</p>
+              <p className="mt-1 text-sm text-[var(--ftf-muted)]">
+                Field access is being connected.
+              </p>
             </div>
             <div className="rounded-xl border border-[var(--ftf-border)] bg-white/60 p-4">
               <h2 className="font-bold">Farm verifications</h2>
-              <p className="mt-1 text-sm text-[var(--ftf-muted)]">Evidence workflow is coming next.</p>
+              <p className="mt-1 text-sm text-[var(--ftf-muted)]">
+                Evidence workflow is coming next.
+              </p>
             </div>
           </div>
         </section>

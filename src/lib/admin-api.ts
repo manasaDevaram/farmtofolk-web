@@ -152,8 +152,7 @@ export const farmApi = {
     request<Farm>("/api/farms", { body: asJson(payload), method: "POST" }),
   get: (farmId: string) => request<Farm>(`/api/farms/${farmId}`),
   list: () => request<FarmListItem[]>("/api/farms"),
-  listByFarmer: (farmerId: string) =>
-    request<Farm[]>(`/api/farmers/${farmerId}/farms`),
+  listByFarmer: (farmerId: string) => request<Farm[]>(`/api/farmers/${farmerId}/farms`),
   update: (farmId: string, payload: FarmPayload) =>
     request<Farm>(`/api/farms/${farmId}`, {
       body: asJson(payload),
@@ -168,8 +167,7 @@ export const batchApi = {
   get: (batchId: string) => request<Batch>(`/api/batches/${batchId}`),
   list: () => request<BatchListItem[]>("/api/batches"),
   listByFarm: (farmId: string) => request<Batch[]>(`/api/farms/${farmId}/batches`),
-  listByFarmer: (farmerId: string) =>
-    request<Batch[]>(`/api/farmers/${farmerId}/batches`),
+  listByFarmer: (farmerId: string) => request<Batch[]>(`/api/farmers/${farmerId}/batches`),
   update: (batchId: string, payload: BatchPayload) =>
     request<Batch>(`/api/batches/${batchId}`, {
       body: asJson(payload),
@@ -179,8 +177,7 @@ export const batchApi = {
 
 // Farm media APIs handle gallery upload, listing, and deletion.
 export const mediaApi = {
-  delete: (mediaId: string) =>
-    request<void>(`/api/farm-media/${mediaId}`, { method: "DELETE" }),
+  delete: (mediaId: string) => request<void>(`/api/farm-media/${mediaId}`, { method: "DELETE" }),
   list: (farmId: string) => request<FarmMedia[]>(`/api/farms/${farmId}/media`),
   upload: (farmId: string, file: File, caption: string) => {
     const formData = new FormData();
@@ -197,23 +194,16 @@ export const evidenceApi = {
   delete: (evidenceId: string) =>
     request<void>(`/api/evidence/${evidenceId}`, { method: "DELETE" }),
   list: (verificationId: string) =>
-    request<VerificationEvidence[]>(
-      `/api/verifications/${verificationId}/evidence`,
-    ),
-  upload: (
-    verificationId: string,
-    file: File,
-    caption: string,
-    isPublic: boolean,
-  ) => {
+    request<VerificationEvidence[]>(`/api/verifications/${verificationId}/evidence`),
+  upload: (verificationId: string, file: File, caption: string, isPublic: boolean) => {
     const formData = new FormData();
     formData.append("file", file);
     if (caption.trim()) formData.append("caption", caption.trim());
     formData.append("isPublic", String(isPublic));
-    return request<VerificationEvidence>(
-      `/api/verifications/${verificationId}/evidence/upload`,
-      { body: formData, method: "POST" },
-    );
+    return request<VerificationEvidence>(`/api/verifications/${verificationId}/evidence/upload`, {
+      body: formData,
+      method: "POST",
+    });
   },
 };
 
@@ -230,8 +220,7 @@ export const verificationApi = {
       {},
       { optional404: true },
     ),
-  list: (farmId: string) =>
-    request<FarmVerification[]>(`/api/farms/${farmId}/verifications`),
+  list: (farmId: string) => request<FarmVerification[]>(`/api/farms/${farmId}/verifications`),
 };
 
 // Trace event APIs build the customer-visible batch journey.
@@ -241,8 +230,7 @@ export const traceEventApi = {
       body: asJson(payload),
       method: "POST",
     }),
-  list: (batchId: string) =>
-    request<TraceEvent[]>(`/api/batches/${batchId}/trace-events`),
+  list: (batchId: string) => request<TraceEvent[]>(`/api/batches/${batchId}/trace-events`),
 };
 
 // Price APIs support add/update because each batch has one transparent breakdown.
@@ -270,11 +258,7 @@ export const qrApi = {
   create: (batchId: string) =>
     request<QrCode>(`/api/batches/${batchId}/qr-code`, { method: "POST" }),
   get: (batchId: string) =>
-    request<QrCode | null>(
-      `/api/batches/${batchId}/qr-code`,
-      {},
-      { optional404: true },
-    ),
+    request<QrCode | null>(`/api/batches/${batchId}/qr-code`, {}, { optional404: true }),
 };
 
 // Aggregate all farms with farmer details for friendly admin lists.

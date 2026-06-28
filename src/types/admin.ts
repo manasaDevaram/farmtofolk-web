@@ -46,10 +46,7 @@ export type Farmer = {
   updatedAt: string;
 };
 
-export type FarmerPayload = Omit<
-  Farmer,
-  "id" | "active" | "createdAt" | "updatedAt"
->;
+export type FarmerPayload = Omit<Farmer, "id" | "active" | "createdAt" | "updatedAt">;
 
 export type Farm = {
   id: string;
@@ -149,10 +146,7 @@ export type TraceEvent = {
   createdAt: string;
 };
 
-export type TraceEventPayload = Omit<
-  TraceEvent,
-  "id" | "batchId" | "createdAt"
->;
+export type TraceEventPayload = Omit<TraceEvent, "id" | "batchId" | "createdAt">;
 
 export type PriceBreakdown = {
   id: string;

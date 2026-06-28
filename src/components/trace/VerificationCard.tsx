@@ -1,16 +1,6 @@
-import type {
-  PublicTraceMedia,
-  PublicTraceVerification,
-} from "@/types/public-trace";
+import type { PublicTraceMedia, PublicTraceVerification } from "@/types/public-trace";
 import { TraceAccordionCard } from "./TraceAccordionCard";
-import {
-  CheckIcon,
-  FieldRow,
-  formatDate,
-  LeafIcon,
-  MediaTile,
-  toTitleCase,
-} from "./trace-utils";
+import { CheckIcon, FieldRow, formatDate, LeafIcon, MediaTile, toTitleCase } from "./trace-utils";
 
 function parseChecklist(checklistJson?: string | null): string[] {
   if (!checklistJson) return [];
@@ -89,15 +79,10 @@ export function VerificationCard({
               }
             />
             <FieldRow label="Verification Date" value={formatDate(verificationDate)} />
-            <FieldRow
-              label="Next Due"
-              value={formatDate(verification?.nextVerificationDue)}
-            />
+            <FieldRow label="Next Due" value={formatDate(verification?.nextVerificationDue)} />
           </dl>
           <div>
-            <h3 className="mb-3 font-black text-stone-950">
-              Verification checklist
-            </h3>
+            <h3 className="mb-3 font-black text-stone-950">Verification checklist</h3>
             {checklist.length ? (
               <ul className="grid gap-2 sm:grid-cols-2">
                 {checklist.map((item) => (
@@ -146,9 +131,7 @@ export function VerificationCard({
         <>
           <p>
             Latest status:{" "}
-            <span className="font-bold text-stone-950">
-              {toTitleCase(verification?.status)}
-            </span>
+            <span className="font-bold text-stone-950">{toTitleCase(verification?.status)}</span>
           </p>
           <p className="mt-1 inline-flex items-center gap-2 font-bold text-emerald-800">
             <CheckIcon className="h-4 w-4" />

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { UserRole } from "@/types/admin";
 import { LoginView } from "./LoginView";
 
 const { login, replace } = vi.hoisted(() => ({
@@ -15,6 +16,32 @@ vi.mock("@/lib/admin-api", () => ({
   authApi: { login },
 }));
 
+function loginResponse(role: UserRole) {
+  return {
+    token: "signed-token",
+    user: {
+      active: true,
+      address: null,
+      email: "user@farmtofolk.in",
+      gender: null,
+      id: "user-1",
+      name: "Test User",
+      phone: null,
+      role,
+    },
+  };
+}
+
+async function signIn() {
+  fireEvent.change(screen.getByLabelText(/email or phone/i), {
+    target: { value: "user@farmtofolk.in" },
+  });
+  fireEvent.change(screen.getByLabelText(/password/i), {
+    target: { value: "password123" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+}
+
 describe("LoginView", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -22,32 +49,18 @@ describe("LoginView", () => {
     replace.mockReset();
   });
 
-  it("stores the authenticated session and opens the admin dashboard", async () => {
-    login.mockResolvedValue({
-      token: "signed-token",
-      user: {
-        active: true,
-        address: null,
-        email: "admin@farmtofolk.in",
-        gender: null,
-        id: "user-1",
-        name: "Admin User",
-        phone: null,
-        role: "ADMIN",
-      },
-    });
+  it.each([
+    ["ADMIN", "/admin"],
+    ["FIELD_OFFICER", "/field"],
+    ["FARMER", "/farmer"],
+  ] as const)("redirects %s users to %s", async (role, destination) => {
+    login.mockResolvedValue(loginResponse(role));
 
     render(<LoginView />);
-    fireEvent.change(screen.getByLabelText(/email or phone/i), {
-      target: { value: "admin@farmtofolk.in" },
-    });
-    fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: "password123" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    await signIn();
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/admin"));
-    expect(login).toHaveBeenCalledWith("admin@farmtofolk.in", "password123");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith(destination));
+    expect(login).toHaveBeenCalledWith("user@farmtofolk.in", "password123");
     expect(localStorage.getItem("ftf-auth-token")).toBe("signed-token");
   });
 
@@ -55,17 +68,9 @@ describe("LoginView", () => {
     login.mockRejectedValue(new Error("Invalid email, phone, or password"));
 
     render(<LoginView />);
-    fireEvent.change(screen.getByLabelText(/email or phone/i), {
-      target: { value: "unknown@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: "wrongpass" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    await signIn();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Invalid email, phone, or password",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid email, phone, or password");
     expect(replace).not.toHaveBeenCalled();
   });
 });

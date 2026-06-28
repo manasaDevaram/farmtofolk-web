@@ -81,4 +81,17 @@ describe("ProtectedRoute", () => {
     expect(await screen.findByText("Admin content")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it("allows admins on field routes", async () => {
+    saveSession(session("ADMIN"));
+
+    render(
+      <ProtectedRoute allowedRoles={["ADMIN", "FIELD_OFFICER"]}>
+        <p>Field content</p>
+      </ProtectedRoute>,
+    );
+
+    expect(await screen.findByText("Field content")).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
 });

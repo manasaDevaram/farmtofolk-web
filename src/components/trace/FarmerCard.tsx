@@ -1,19 +1,9 @@
 import type { PublicTraceFarmer } from "@/types/public-trace";
 import { TraceAccordionCard } from "./TraceAccordionCard";
-import {
-  CheckIcon,
-  compactLocation,
-  FieldRow,
-  formatDate,
-  LeafIcon,
-} from "./trace-utils";
+import { CheckIcon, compactLocation, FieldRow, formatDate, LeafIcon } from "./trace-utils";
 
 export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
-  const location = compactLocation(
-    farmer?.village,
-    farmer?.district,
-    farmer?.state,
-  );
+  const location = compactLocation(farmer?.village, farmer?.district, farmer?.state);
   const contact = farmer?.phone;
 
   return (
@@ -36,12 +26,9 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
             {contact ? <FieldRow label="Contact" value={contact} /> : null}
           </dl>
           <div className="rounded-3xl bg-stone-50 p-4">
-            <h3 className="font-black text-stone-950">
-              About {farmer?.name || "this farmer"}
-            </h3>
+            <h3 className="font-black text-stone-950">About {farmer?.name || "this farmer"}</h3>
             <p className="mt-2 leading-7 text-stone-700">
-              {farmer?.bio ||
-                "This farmer profile is being enriched with more public details."}
+              {farmer?.bio || "This farmer profile is being enriched with more public details."}
             </p>
           </div>
           {farmer?.introVideoUrl ? (
@@ -62,9 +49,7 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
       }
       summary={
         <>
-          <p className="font-bold text-stone-950">
-            {farmer?.name || "Farmer details unavailable"}
-          </p>
+          <p className="font-bold text-stone-950">{farmer?.name || "Farmer details unavailable"}</p>
           <p>{location}</p>
         </>
       }

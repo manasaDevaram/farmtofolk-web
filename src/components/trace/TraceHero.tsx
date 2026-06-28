@@ -9,9 +9,7 @@ export function TraceHero({
   farmMedia?: PublicTraceMedia[] | null;
 }) {
   const cropName = batch?.cropName || "Fresh Produce";
-  const heroImage = mediaSrc(
-    farmMedia?.find((item) => item.isPublic) ?? farmMedia?.[0],
-  );
+  const heroImage = mediaSrc(farmMedia?.find((item) => item.isPublic) ?? farmMedia?.[0]);
 
   return (
     <section
@@ -37,15 +35,11 @@ export function TraceHero({
         <dl className="mt-6 grid max-w-lg gap-3 text-sm text-stone-700 sm:grid-cols-2">
           <div>
             <dt className="font-semibold text-stone-500">Harvested</dt>
-            <dd className="font-black text-stone-950">
-              {formatDate(batch?.harvestDate)}
-            </dd>
+            <dd className="font-black text-stone-950">{formatDate(batch?.harvestDate)}</dd>
           </div>
           <div>
             <dt className="font-semibold text-stone-500">Best before</dt>
-            <dd className="font-black text-stone-950">
-              {formatDate(batch?.bestBeforeDate)}
-            </dd>
+            <dd className="font-black text-stone-950">{formatDate(batch?.bestBeforeDate)}</dd>
           </div>
         </dl>
       </div>

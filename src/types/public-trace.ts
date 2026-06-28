@@ -101,9 +101,7 @@ export interface PublicTraceFarmMedia {
   createdAt: string;
 }
 
-export type PublicTraceMedia =
-  | PublicTraceFarmMedia
-  | PublicTraceVerificationEvidence;
+export type PublicTraceMedia = PublicTraceFarmMedia | PublicTraceVerificationEvidence;
 
 export interface PublicTracePriceBreakdown {
   id: string;

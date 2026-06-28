@@ -11,7 +11,7 @@ export function saveSession(session: LoginResponse) {
 
 export function getSession(): LoginResponse | null {
   const token = getSessionToken();
-  const user = getCurrentUser();
+  const user = getSessionUser();
   return token && user ? { token, user } : null;
 }
 
@@ -20,7 +20,7 @@ export function getSessionToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function getCurrentUser(): UserAccount | null {
+export function getSessionUser(): UserAccount | null {
   if (typeof window === "undefined") return null;
 
   const value = localStorage.getItem(USER_KEY);
@@ -34,8 +34,6 @@ export function getCurrentUser(): UserAccount | null {
   }
 }
 
-export const getSessionUser = getCurrentUser;
-
 export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
@@ -47,10 +45,10 @@ export function isAuthenticated() {
 }
 
 export function hasRole(role: UserAccount["role"]) {
-  return getCurrentUser()?.role === role;
+  return getSessionUser()?.role === role;
 }
 
 export function hasAnyRole(roles: UserAccount["role"][]) {
-  const role = getCurrentUser()?.role;
+  const role = getSessionUser()?.role;
   return role ? roles.includes(role) : false;
 }

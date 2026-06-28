@@ -115,9 +115,7 @@ describe("public trace page", () => {
 
     render(Page);
 
-    expect(
-      screen.getByRole("heading", { name: /Organic Tomatoes/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Organic Tomatoes/i })).toBeInTheDocument();
     expect(getPublicTrace).toHaveBeenCalledWith("token-123");
   });
 
@@ -133,9 +131,7 @@ describe("public trace page", () => {
 
     render(Page);
 
-    expect(
-      screen.getByRole("heading", { name: /Organic Tomatoes/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Organic Tomatoes/i })).toBeInTheDocument();
     expect(screen.queryByText(/Scanned/i)).not.toBeInTheDocument();
   });
 
@@ -150,12 +146,8 @@ describe("public trace page", () => {
 
     render(Page);
 
-    expect(
-      screen.getByRole("heading", { name: /Trace details unavailable/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Unable to reach FarmToFolk trace service."),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Trace details unavailable/i })).toBeInTheDocument();
+    expect(screen.getByText("Unable to reach FarmToFolk trace service.")).toBeInTheDocument();
   });
 
   it("renders farmer card summary", () => {
@@ -170,9 +162,7 @@ describe("public trace page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Farmer/i }));
 
-    expect(
-      screen.getByText(/practicing natural farming for over 12 years/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/practicing natural farming for over 12 years/i)).toBeInTheDocument();
   });
 
   it("calculates farmer percentage correctly", () => {
@@ -183,9 +173,7 @@ describe("public trace page", () => {
 
   it("shows N/A for money percentages when consumer price is missing", () => {
     render(
-      <MoneyBreakdownCard
-        priceBreakdown={{ ...sampleTrace.priceBreakdown, consumerPrice: 0 }}
-      />,
+      <MoneyBreakdownCard priceBreakdown={{ ...sampleTrace.priceBreakdown, consumerPrice: 0 }} />,
     );
 
     expect(screen.getByText(/Farmer gets/i)).toHaveTextContent("N/A");
@@ -231,16 +219,12 @@ describe("public trace page", () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Agroecology Verification/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /Agroecology Verification/i }));
 
     expect(screen.getByText("No Synthetic Pesticides")).toBeInTheDocument();
     expect(screen.getByText("Water Conservation")).toBeInTheDocument();
     expect(screen.getByText("No synthetic chemicals observed.")).toBeInTheDocument();
-    expect(
-      screen.getByRole("img", { name: "Public compost evidence" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Public compost evidence" })).toBeInTheDocument();
     expect(
       screen.queryByRole("img", { name: "Private internal evidence" }),
     ).not.toBeInTheDocument();
@@ -256,9 +240,7 @@ describe("public trace page", () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Agroecology Verification/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /Agroecology Verification/i }));
 
     expect(screen.getByText("No checklist details available.")).toBeInTheDocument();
   });
@@ -322,9 +304,7 @@ describe("public trace page", () => {
   it("renders error state when API fails", () => {
     render(<ErrorState message="Trace lookup failed." reset={() => undefined} />);
 
-    expect(
-      screen.getByRole("heading", { name: /Trace details unavailable/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Trace details unavailable/i })).toBeInTheDocument();
     expect(screen.getByText("Trace lookup failed.")).toBeInTheDocument();
   });
 });

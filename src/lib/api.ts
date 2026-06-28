@@ -2,9 +2,7 @@ import type { PublicTraceResponse } from "@/types/public-trace";
 
 const API_PROXY_BASE_URL = "/api/backend";
 
-export async function getPublicTrace(
-  publicToken: string,
-): Promise<PublicTraceResponse> {
+export async function getPublicTrace(publicToken: string): Promise<PublicTraceResponse> {
   const endpoint = `${API_PROXY_BASE_URL}/api/public/trace/${encodeURIComponent(publicToken)}`;
 
   let response: Response;

@@ -27,12 +27,7 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
     <TraceAccordionCard
       accent="bg-sky-50 text-sky-800"
       icon={
-        <svg
-          aria-hidden="true"
-          className="h-9 w-9"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg aria-hidden="true" className="h-9 w-9" fill="none" viewBox="0 0 24 24">
           <path
             d="M12 3 5 6v5.5c0 4.2 2.8 7.9 7 9.5 4.2-1.6 7-5.3 7-9.5V6l-7-3Z"
             stroke="currentColor"
@@ -75,8 +70,7 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
       }
       summary={
         <p>
-          Trust signals based on verified people, farm evidence, pricing, and
-          batch traceability.
+          Trust signals based on verified people, farm evidence, pricing, and batch traceability.
         </p>
       }
       title="Trust Summary"

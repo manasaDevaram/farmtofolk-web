@@ -2,11 +2,7 @@ import type { PublicTraceMedia } from "@/types/public-trace";
 import { TraceAccordionCard } from "./TraceAccordionCard";
 import { MediaTile } from "./trace-utils";
 
-export function FarmMediaCard({
-  farmMedia,
-}: {
-  farmMedia?: PublicTraceMedia[] | null;
-}) {
+export function FarmMediaCard({ farmMedia }: { farmMedia?: PublicTraceMedia[] | null }) {
   const media = farmMedia ?? [];
   const remaining = Math.max(media.length - 3, 0);
 
@@ -14,12 +10,7 @@ export function FarmMediaCard({
     <TraceAccordionCard
       accent="bg-fuchsia-50 text-fuchsia-800"
       icon={
-        <svg
-          aria-hidden="true"
-          className="h-9 w-9"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg aria-hidden="true" className="h-9 w-9" fill="none" viewBox="0 0 24 24">
           <path
             d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.2l1.1-1.6h6.4L16.3 6h1.2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z"
             stroke="currentColor"
