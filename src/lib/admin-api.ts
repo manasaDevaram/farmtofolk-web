@@ -18,7 +18,10 @@ import type {
   VerificationEvidence,
   VerificationPayload,
   BatchListItem,
+  DashboardSummary,
+  LoginResponse,
 } from "@/types/admin";
+import { getSessionToken } from "@/lib/auth-session";
 
 const API_PROXY_BASE_URL = "/api/backend";
 
@@ -35,12 +38,19 @@ async function request<T>(
   let response: Response;
 
   try {
+    const headers = new Headers(init.headers);
+    const token = getSessionToken();
+
+    if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
     response = await fetch(url, {
       ...init,
-      headers:
-        init.body instanceof FormData
-          ? init.headers
-          : { "Content-Type": "application/json", ...init.headers },
+      headers,
     });
   } catch (error) {
     console.error("Admin API network error", { error, url });
@@ -70,6 +80,21 @@ async function request<T>(
 }
 
 const asJson = (body: unknown) => JSON.stringify(body);
+
+export const authApi = {
+  login: (emailOrPhone: string, password: string) =>
+    request<LoginResponse>("/api/auth/login", {
+      body: asJson({ emailOrPhone, password }),
+      method: "POST",
+    }),
+};
+
+export const dashboardApi = {
+  summary: () =>
+    request<DashboardSummary>("/api/admin/dashboard/summary", {
+      cache: "no-store",
+    }),
+};
 
 // Farmer APIs cover profile CRUD plus active/inactive status changes.
 export const farmerApi = {

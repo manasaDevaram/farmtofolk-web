@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   batchApi,
+  dashboardApi,
   evidenceApi,
   farmApi,
   farmerApi,
@@ -22,6 +23,7 @@ import type {
   Batch,
   BatchPayload,
   BatchWithRelations,
+  DashboardSummary,
   Farm,
   Farmer,
   FarmMedia,
@@ -61,6 +63,26 @@ const isImageFile = (type?: string | null, url?: string | null) =>
 
 // AdminHomeView is the operator entry point for the complete data flow.
 export function AdminHomeView() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setSummary(await dashboardApi.summary());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load the dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
     <AdminShell>
       <PageHeader
@@ -71,26 +93,62 @@ export function AdminHomeView() {
             <ButtonLink href="/admin/batches/new" variant="secondary">Add Batch</ButtonLink>
           </>
         }
-        description="Create Farmer -> Create Farm -> Upload Media -> Add Verification -> Create Batch -> Add Trace Events -> Add Price -> Generate QR."
-        eyebrow="MVP Admin"
-        title="Traceability Data Management"
+        description="Here is what is happening across your farm network today."
+        eyebrow="Farm network"
+        title="Admin Dashboard"
       />
-      <div className="grid gap-4 md:grid-cols-3">
-        <DashboardCard href="/admin/farmers" title="Farmers" text="Create profiles, update details, and activate or deactivate farmer records." />
-        <DashboardCard href="/admin/farms" title="Farms" text="Manage farm location, media gallery, and verification status." />
-        <DashboardCard href="/admin/batches" title="Batches" text="Create product lots, timeline events, pricing, and QR trace links." />
-      </div>
+      {loading ? <LoadingState label="Gathering today&apos;s farm records..." /> : null}
+      {error ? <ErrorState message={error} onRetry={load} /> : null}
+      {summary ? <DashboardSummaryView summary={summary} /> : null}
     </AdminShell>
   );
 }
 
-function DashboardCard({ href, text, title }: { href: string; text: string; title: string }) {
+function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
+  const money = new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" });
+
   return (
-    <Link className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md" href={href}>
-      <h2 className="text-2xl font-black">{title}</h2>
-      <p className="mt-2 text-stone-600">{text}</p>
-    </Link>
+    <>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard href="/admin/farmers" label="Total farmers" note={`${summary.activeFarmers} active`} tone="green" value={summary.totalFarmers} />
+        <MetricCard href="/admin/farms" label="Total farms" note="Registered holdings" tone="kraft" value={summary.totalFarms} />
+        <MetricCard href="/admin/batches" label="Total batches" note="Traceable produce lots" tone="green" value={summary.totalBatches} />
+        <MetricCard label="Pending payments" note={`${summary.pendingPaymentBatchCount} batches`} tone="clay" value={money.format(summary.pendingPaymentsAmount || 0)} />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+        <Card>
+          <div className="flex items-center justify-between gap-4">
+            <div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-green-700)]">Field activity</p><h2 className="mt-1 text-2xl font-bold">Recent verifications</h2></div>
+            <span className="ftf-stamp">{summary.recentVerifications.length} recent</span>
+          </div>
+          <div className="mt-5 divide-y divide-[var(--ftf-border)]">
+            {summary.recentVerifications.length ? summary.recentVerifications.map((verification) => (
+              <div className="flex items-center justify-between gap-4 py-3" key={verification.id}>
+                <div><p className="font-bold">{verification.verificationType || "Farm verification"}</p><p className="mt-0.5 text-sm text-[var(--ftf-muted)]">{verification.verificationDate}</p></div>
+                <span className="ftf-stamp">{verification.status || "Recorded"}</span>
+              </div>
+            )) : <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">No recent verification activity.</p>}
+          </div>
+        </Card>
+
+        <Card className="ftf-kraft-card">
+          <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-soil)]">Traceability reach</p>
+          <div className="mt-3 flex items-end justify-between gap-4">
+            <div><p className="ftf-display text-5xl font-bold text-[var(--ftf-green-900)]">{summary.totalQrCodes}</p><p className="mt-1 font-bold text-[var(--ftf-soil)]">QR codes generated</p></div>
+            <div className="grid h-20 w-20 grid-cols-4 gap-1 rounded-xl border border-[var(--ftf-soil)]/20 bg-white/40 p-2" aria-hidden="true">{Array.from({ length: 16 }, (_, index) => <span className={index % 3 === 0 || index === 6 || index === 11 ? "bg-[var(--ftf-green-900)]" : "bg-transparent"} key={index} />)}</div>
+          </div>
+          <p className="mt-6 text-sm leading-6 text-[var(--ftf-soil)]/75">Each code gives customers a direct path to the farmer, farm, verification evidence, and batch journey.</p>
+        </Card>
+      </div>
+    </>
   );
+}
+
+function MetricCard({ href, label, note, tone, value }: { href?: string; label: string; note: string; tone: "green" | "kraft" | "clay"; value: number | string }) {
+  const content = <><div className={`ftf-watercolor-icon ftf-tone-${tone}`}><span className="ftf-display text-xl font-bold">{label.slice(0, 1)}</span></div><div className="min-w-0"><p className="text-2xl font-bold leading-none sm:text-3xl">{value}</p><p className="mt-2 text-sm font-bold">{label}</p><p className="mt-0.5 text-xs text-[var(--ftf-muted)]">{note}</p></div></>;
+  const className = "ftf-card flex min-h-32 items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-[0_15px_35px_rgba(59,45,25,.12)]";
+  return href ? <Link className={className} href={href}>{content}</Link> : <section className={className}>{content}</section>;
 }
 
 // FarmersListView loads all farmers and filters them locally for fast admin lookup.

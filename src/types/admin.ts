@@ -1,5 +1,34 @@
 export type Nullable<T> = T | null;
 
+export type UserRole = "ADMIN" | "FIELD_OFFICER" | "FARMER";
+
+export type UserAccount = {
+  id: string;
+  name: string;
+  email: Nullable<string>;
+  phone: Nullable<string>;
+  role: UserRole;
+  gender: Nullable<string>;
+  address: Nullable<string>;
+  active: boolean;
+};
+
+export type LoginResponse = {
+  token: string;
+  user: UserAccount;
+};
+
+export type DashboardSummary = {
+  totalFarmers: number;
+  activeFarmers: number;
+  totalFarms: number;
+  totalBatches: number;
+  pendingPaymentsAmount: number;
+  pendingPaymentBatchCount: number;
+  recentVerifications: FarmVerification[];
+  totalQrCodes: number;
+};
+
 export type Farmer = {
   id: string;
   farmerCode: string;

@@ -1,19 +1,190 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ftf-green-900: #1f3d25;
+  --ftf-green-700: #365b38;
+  --ftf-green-500: #5f8a4c;
+  --ftf-sage: #dde8d2;
+  --ftf-paper: #f8f3e7;
+  --ftf-paper-light: #fcfaf5;
+  --ftf-kraft: #c9a66b;
+  --ftf-clay: #b87333;
+  --ftf-soil: #5a3e2b;
+  --ftf-border: #dccfb8;
+  --ftf-text: #2d2b26;
+  --ftf-muted: #7b715f;
+  --ftf-radius-card: 22px;
+  --ftf-radius-input: 12px;
+  --ftf-shadow-card: 0 10px 30px rgba(59, 45, 25, 0.08);
+  --background: var(--ftf-paper);
+  --foreground: var(--ftf-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: Arial, Helvetica, sans-serif;
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(95, 138, 76, 0.06), transparent 28%),
+    radial-gradient(circle at 90% 20%, rgba(184, 115, 51, 0.05), transparent 26%),
+    var(--ftf-paper);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+h3,
+.ftf-display {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ftf-paper {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(90, 62, 43, 0.018) 0,
+      rgba(90, 62, 43, 0.018) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    var(--ftf-paper);
+}
+
+.ftf-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(252, 250, 245, 0.94);
+  border: 1px solid var(--ftf-border);
+  border-radius: var(--ftf-radius-card);
+  box-shadow: var(--ftf-shadow-card);
+}
+
+.ftf-card::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(90deg, rgba(90, 62, 43, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(90, 62, 43, 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+  content: "";
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.ftf-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ftf-leaf-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ftf-green-700);
+  opacity: 0.45;
+}
+
+.ftf-leaf-divider::before,
+.ftf-leaf-divider::after {
+  height: 1px;
+  flex: 1;
+  background: currentColor;
+  content: "";
+}
+
+.ftf-leaf-divider span {
+  width: 18px;
+  height: 12px;
+  background: currentColor;
+  clip-path: ellipse(45% 50% at 50% 50%);
+  transform: rotate(-25deg);
+}
+
+.ftf-botanical-corner {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  color: var(--ftf-green-700);
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.ftf-watercolor-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.7), transparent 35%),
+    rgba(95, 138, 76, 0.18);
+  color: var(--ftf-green-700);
+}
+
+.ftf-tone-clay {
+  background: rgba(184, 115, 51, 0.16);
+  color: #8d4d1d;
+}
+
+.ftf-tone-kraft {
+  background: rgba(201, 166, 107, 0.24);
+  color: var(--ftf-soil);
+}
+
+.ftf-stamp {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid rgba(54, 91, 56, 0.4);
+  border-radius: 999px;
+  background: rgba(221, 232, 210, 0.52);
+  color: var(--ftf-green-700);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+}
+
+.ftf-kraft-card {
+  border: 1px solid rgba(90, 62, 43, 0.18);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.15)),
+    var(--ftf-kraft);
+}
+
+.ftf-focus:focus-visible {
+  outline: 3px solid rgba(95, 138, 76, 0.28);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
