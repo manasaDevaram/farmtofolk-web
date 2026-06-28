@@ -1,3 +1,4 @@
+import { clearSession, getSessionToken } from "@/lib/auth-session";
 import type {
   Batch,
   BatchPayload,
@@ -21,7 +22,6 @@ import type {
   DashboardSummary,
   LoginResponse,
 } from "@/types/admin";
-import { getSessionToken } from "@/lib/auth-session";
 
 const API_PROXY_BASE_URL = "/api/backend";
 
@@ -32,7 +32,7 @@ function baseUrl() {
 async function request<T>(
   path: string,
   init: RequestInit = {},
-  options: { optional404?: boolean } = {},
+  options: { optional404?: boolean; publicRequest?: boolean } = {},
 ): Promise<T> {
   const url = `${baseUrl()}${path}`;
   let response: Response;
@@ -61,6 +61,18 @@ async function request<T>(
     return null as T;
   }
 
+  if (response.status === 401 && !options.publicRequest) {
+    clearSession();
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.replace("/login");
+    }
+    throw new Error("Your session has expired. Please sign in again.");
+  }
+
+  if (response.status === 403) {
+    throw new Error("You do not have permission to perform this action.");
+  }
+
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     let rawBody = "";
@@ -83,10 +95,14 @@ const asJson = (body: unknown) => JSON.stringify(body);
 
 export const authApi = {
   login: (emailOrPhone: string, password: string) =>
-    request<LoginResponse>("/api/auth/login", {
-      body: asJson({ emailOrPhone, password }),
-      method: "POST",
-    }),
+    request<LoginResponse>(
+      "/api/auth/login",
+      {
+        body: asJson({ emailOrPhone, password }),
+        method: "POST",
+      },
+      { publicRequest: true },
+    ),
 };
 
 export const dashboardApi = {

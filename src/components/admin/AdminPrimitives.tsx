@@ -23,7 +23,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   function signOut() {
     clearSession();
-    router.push("/");
+    router.replace("/login");
   }
 
   return (

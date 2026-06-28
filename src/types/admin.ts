@@ -25,7 +25,7 @@ export type DashboardSummary = {
   totalBatches: number;
   pendingPaymentsAmount: number;
   pendingPaymentBatchCount: number;
-  recentVerifications: FarmVerification[];
+  recentVerifications: number | FarmVerification[];
   totalQrCodes: number;
 };
 

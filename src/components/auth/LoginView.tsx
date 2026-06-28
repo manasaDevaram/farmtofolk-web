@@ -22,8 +22,19 @@ export function LoginView() {
 
     try {
       const session = await authApi.login(emailOrPhone.trim(), password);
+      const destinations = {
+        ADMIN: "/admin",
+        FARMER: "/farmer",
+        FIELD_OFFICER: "/field",
+      } as const;
+      const destination = destinations[session.user.role];
+
+      if (!destination) {
+        throw new Error("This account role is not supported.");
+      }
+
       saveSession(session);
-      router.push(session.user.role === "FARMER" ? "/farmer" : "/admin");
+      router.replace(destination);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to sign in.");
     } finally {

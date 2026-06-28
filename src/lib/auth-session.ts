@@ -4,8 +4,15 @@ const TOKEN_KEY = "ftf-auth-token";
 const USER_KEY = "ftf-auth-user";
 
 export function saveSession(session: LoginResponse) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, session.token);
   localStorage.setItem(USER_KEY, JSON.stringify(session.user));
+}
+
+export function getSession(): LoginResponse | null {
+  const token = getSessionToken();
+  const user = getCurrentUser();
+  return token && user ? { token, user } : null;
 }
 
 export function getSessionToken() {
@@ -13,7 +20,7 @@ export function getSessionToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function getSessionUser(): UserAccount | null {
+export function getCurrentUser(): UserAccount | null {
   if (typeof window === "undefined") return null;
 
   const value = localStorage.getItem(USER_KEY);
@@ -27,8 +34,23 @@ export function getSessionUser(): UserAccount | null {
   }
 }
 
+export const getSessionUser = getCurrentUser;
+
 export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+}
+
+export function isAuthenticated() {
+  return getSession() !== null;
+}
+
+export function hasRole(role: UserAccount["role"]) {
+  return getCurrentUser()?.role === role;
+}
+
+export function hasAnyRole(roles: UserAccount["role"][]) {
+  const role = getCurrentUser()?.role;
+  return role ? roles.includes(role) : false;
 }

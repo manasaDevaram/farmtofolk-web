@@ -106,6 +106,12 @@ export function AdminHomeView() {
 
 function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
   const money = new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" });
+  const recentVerifications = Array.isArray(summary.recentVerifications)
+    ? summary.recentVerifications
+    : [];
+  const recentVerificationCount = Array.isArray(summary.recentVerifications)
+    ? summary.recentVerifications.length
+    : summary.recentVerifications;
 
   return (
     <>
@@ -120,15 +126,15 @@ function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
         <Card>
           <div className="flex items-center justify-between gap-4">
             <div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-green-700)]">Field activity</p><h2 className="mt-1 text-2xl font-bold">Recent verifications</h2></div>
-            <span className="ftf-stamp">{summary.recentVerifications.length} recent</span>
+            <span className="ftf-stamp">{recentVerificationCount} recent</span>
           </div>
           <div className="mt-5 divide-y divide-[var(--ftf-border)]">
-            {summary.recentVerifications.length ? summary.recentVerifications.map((verification) => (
+            {recentVerifications.length ? recentVerifications.map((verification) => (
               <div className="flex items-center justify-between gap-4 py-3" key={verification.id}>
                 <div><p className="font-bold">{verification.verificationType || "Farm verification"}</p><p className="mt-0.5 text-sm text-[var(--ftf-muted)]">{verification.verificationDate}</p></div>
                 <span className="ftf-stamp">{verification.status || "Recorded"}</span>
               </div>
-            )) : <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">No recent verification activity.</p>}
+            )) : <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">{recentVerificationCount ? `${recentVerificationCount} recent verifications recorded.` : "No recent verification activity."}</p>}
           </div>
         </Card>
 

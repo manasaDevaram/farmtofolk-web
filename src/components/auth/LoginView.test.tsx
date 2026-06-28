@@ -2,13 +2,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginView } from "./LoginView";
 
-const { login, push } = vi.hoisted(() => ({
+const { login, replace } = vi.hoisted(() => ({
   login: vi.fn(),
-  push: vi.fn(),
+  replace: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ replace }),
 }));
 
 vi.mock("@/lib/admin-api", () => ({
@@ -19,7 +19,7 @@ describe("LoginView", () => {
   beforeEach(() => {
     localStorage.clear();
     login.mockReset();
-    push.mockReset();
+    replace.mockReset();
   });
 
   it("stores the authenticated session and opens the admin dashboard", async () => {
@@ -46,7 +46,7 @@ describe("LoginView", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/admin"));
     expect(login).toHaveBeenCalledWith("admin@farmtofolk.in", "password123");
     expect(localStorage.getItem("ftf-auth-token")).toBe("signed-token");
   });
@@ -66,6 +66,6 @@ describe("LoginView", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Invalid email, phone, or password",
     );
-    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 });
