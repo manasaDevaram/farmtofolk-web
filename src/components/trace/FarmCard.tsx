@@ -22,20 +22,12 @@ export function FarmCard({
   return (
     <TraceAccordionCard
       accent="bg-lime-50 text-emerald-800"
-      icon={
-        <LeafIcon className="h-9 w-9" />
-      }
+      icon={<LeafIcon className="h-9 w-9" />}
       openContent={
         <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
           <dl>
-            <FieldRow
-              label="Farm Size"
-              value={size ? `${formatNumber(size)} acres` : null}
-            />
-            <FieldRow
-              label="Farming Type"
-              value={toTitleCase(farm?.farmingType)}
-            />
+            <FieldRow label="Farm Size" value={size ? `${formatNumber(size)} acres` : null} />
+            <FieldRow label="Farming Type" value={toTitleCase(farm?.farmingType)} />
           </dl>
           <div>
             <h3 className="mb-3 font-black text-stone-950">Farm media</h3>
@@ -59,12 +51,9 @@ export function FarmCard({
       }
       summary={
         <>
-          <p className="font-bold text-stone-950">
-            {farm?.farmName || "Farm details unavailable"}
-          </p>
+          <p className="font-bold text-stone-950">{farm?.farmName || "Farm details unavailable"}</p>
           <p>
-            {size ? `${formatNumber(size)} Acres` : "Farm size unavailable"} -{" "}
-            {location}
+            {size ? `${formatNumber(size)} Acres` : "Farm size unavailable"} - {location}
           </p>
         </>
       }

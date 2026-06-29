@@ -10,18 +10,13 @@ export function LoadingState() {
           </span>
           <div>
             <p className="text-xl font-black text-emerald-950">FarmToFolk</p>
-            <p className="text-sm text-stone-600">
-              Loading your trace details...
-            </p>
+            <p className="text-sm text-stone-600">Loading your trace details...</p>
           </div>
         </div>
         <div className="mt-8 h-64 animate-pulse rounded-[1.75rem] bg-stone-100" />
         <div className="mt-4 space-y-4">
           {[1, 2, 3, 4].map((item) => (
-            <div
-              className="h-28 animate-pulse rounded-[1.75rem] bg-white"
-              key={item}
-            />
+            <div className="h-28 animate-pulse rounded-[1.75rem] bg-white" key={item} />
           ))}
         </div>
       </div>

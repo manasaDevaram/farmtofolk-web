@@ -43,9 +43,7 @@ export function formatPercent(part?: number | null, total?: number | null): stri
   return `${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`;
 }
 
-export function compactLocation(
-  ...parts: Array<string | null | undefined>
-): string {
+export function compactLocation(...parts: Array<string | null | undefined>): string {
   const location = parts.filter(Boolean).join(", ");
   return location || "Location not available";
 }
@@ -71,13 +69,7 @@ export function toTitleCase(value?: string | null): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function FieldRow({
-  label,
-  value,
-}: {
-  label: string;
-  value?: string | number | null;
-}) {
+export function FieldRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-stone-100 py-2 last:border-0">
       <dt className="text-sm text-stone-500">{label}</dt>
@@ -124,12 +116,7 @@ export function MediaTile({
 
 export function LeafIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24">
       <path
         d="M20 4c-7.5.4-12.8 3.3-15.1 8.3C2.8 16.8 5.5 20 9.4 20c5.5 0 9.8-5.2 10.6-16Z"
         fill="currentColor"
@@ -147,12 +134,7 @@ export function LeafIcon({ className = "h-5 w-5" }: { className?: string }) {
 
 export function CheckIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24">
       <path
         d="m5 12 4 4L19 6"
         stroke="currentColor"
@@ -164,18 +146,9 @@ export function CheckIcon({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-export function ChevronIcon({
-  className = "h-5 w-5",
-}: {
-  className?: string;
-}) {
+export function ChevronIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24">
       <path
         d="m6 9 6 6 6-6"
         stroke="currentColor"
@@ -189,12 +162,7 @@ export function ChevronIcon({
 
 function PlayIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="currentColor"
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden="true" className={className} fill="currentColor" viewBox="0 0 24 24">
       <path d="M8 5v14l11-7L8 5Z" />
     </svg>
   );

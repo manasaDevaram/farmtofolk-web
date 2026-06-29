@@ -1,3 +1,4 @@
+import { clearSession, getSessionToken } from "@/lib/auth-session";
 import type {
   Batch,
   BatchPayload,
@@ -18,6 +19,8 @@ import type {
   VerificationEvidence,
   VerificationPayload,
   BatchListItem,
+  DashboardSummary,
+  LoginResponse,
 } from "@/types/admin";
 
 const API_PROXY_BASE_URL = "/api/backend";
@@ -29,18 +32,25 @@ function baseUrl() {
 async function request<T>(
   path: string,
   init: RequestInit = {},
-  options: { optional404?: boolean } = {},
+  options: { optional404?: boolean; publicRequest?: boolean } = {},
 ): Promise<T> {
   const url = `${baseUrl()}${path}`;
   let response: Response;
 
   try {
+    const headers = new Headers(init.headers);
+    const token = getSessionToken();
+
+    if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
     response = await fetch(url, {
       ...init,
-      headers:
-        init.body instanceof FormData
-          ? init.headers
-          : { "Content-Type": "application/json", ...init.headers },
+      headers,
     });
   } catch (error) {
     console.error("Admin API network error", { error, url });
@@ -49,6 +59,18 @@ async function request<T>(
 
   if (options.optional404 && response.status === 404) {
     return null as T;
+  }
+
+  if (response.status === 401 && !options.publicRequest) {
+    clearSession();
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.replace("/login");
+    }
+    throw new Error("Your session has expired. Please sign in again.");
+  }
+
+  if (response.status === 403) {
+    throw new Error("You do not have permission to perform this action.");
   }
 
   if (!response.ok) {
@@ -70,6 +92,25 @@ async function request<T>(
 }
 
 const asJson = (body: unknown) => JSON.stringify(body);
+
+export const authApi = {
+  login: (emailOrPhone: string, password: string) =>
+    request<LoginResponse>(
+      "/api/auth/login",
+      {
+        body: asJson({ emailOrPhone, password }),
+        method: "POST",
+      },
+      { publicRequest: true },
+    ),
+};
+
+export const dashboardApi = {
+  summary: () =>
+    request<DashboardSummary>("/api/admin/dashboard/summary", {
+      cache: "no-store",
+    }),
+};
 
 // Farmer APIs cover profile CRUD plus active/inactive status changes.
 export const farmerApi = {
@@ -111,8 +152,7 @@ export const farmApi = {
     request<Farm>("/api/farms", { body: asJson(payload), method: "POST" }),
   get: (farmId: string) => request<Farm>(`/api/farms/${farmId}`),
   list: () => request<FarmListItem[]>("/api/farms"),
-  listByFarmer: (farmerId: string) =>
-    request<Farm[]>(`/api/farmers/${farmerId}/farms`),
+  listByFarmer: (farmerId: string) => request<Farm[]>(`/api/farmers/${farmerId}/farms`),
   update: (farmId: string, payload: FarmPayload) =>
     request<Farm>(`/api/farms/${farmId}`, {
       body: asJson(payload),
@@ -127,8 +167,7 @@ export const batchApi = {
   get: (batchId: string) => request<Batch>(`/api/batches/${batchId}`),
   list: () => request<BatchListItem[]>("/api/batches"),
   listByFarm: (farmId: string) => request<Batch[]>(`/api/farms/${farmId}/batches`),
-  listByFarmer: (farmerId: string) =>
-    request<Batch[]>(`/api/farmers/${farmerId}/batches`),
+  listByFarmer: (farmerId: string) => request<Batch[]>(`/api/farmers/${farmerId}/batches`),
   update: (batchId: string, payload: BatchPayload) =>
     request<Batch>(`/api/batches/${batchId}`, {
       body: asJson(payload),
@@ -138,8 +177,7 @@ export const batchApi = {
 
 // Farm media APIs handle gallery upload, listing, and deletion.
 export const mediaApi = {
-  delete: (mediaId: string) =>
-    request<void>(`/api/farm-media/${mediaId}`, { method: "DELETE" }),
+  delete: (mediaId: string) => request<void>(`/api/farm-media/${mediaId}`, { method: "DELETE" }),
   list: (farmId: string) => request<FarmMedia[]>(`/api/farms/${farmId}/media`),
   upload: (farmId: string, file: File, caption: string) => {
     const formData = new FormData();
@@ -156,23 +194,16 @@ export const evidenceApi = {
   delete: (evidenceId: string) =>
     request<void>(`/api/evidence/${evidenceId}`, { method: "DELETE" }),
   list: (verificationId: string) =>
-    request<VerificationEvidence[]>(
-      `/api/verifications/${verificationId}/evidence`,
-    ),
-  upload: (
-    verificationId: string,
-    file: File,
-    caption: string,
-    isPublic: boolean,
-  ) => {
+    request<VerificationEvidence[]>(`/api/verifications/${verificationId}/evidence`),
+  upload: (verificationId: string, file: File, caption: string, isPublic: boolean) => {
     const formData = new FormData();
     formData.append("file", file);
     if (caption.trim()) formData.append("caption", caption.trim());
     formData.append("isPublic", String(isPublic));
-    return request<VerificationEvidence>(
-      `/api/verifications/${verificationId}/evidence/upload`,
-      { body: formData, method: "POST" },
-    );
+    return request<VerificationEvidence>(`/api/verifications/${verificationId}/evidence/upload`, {
+      body: formData,
+      method: "POST",
+    });
   },
 };
 
@@ -189,8 +220,7 @@ export const verificationApi = {
       {},
       { optional404: true },
     ),
-  list: (farmId: string) =>
-    request<FarmVerification[]>(`/api/farms/${farmId}/verifications`),
+  list: (farmId: string) => request<FarmVerification[]>(`/api/farms/${farmId}/verifications`),
 };
 
 // Trace event APIs build the customer-visible batch journey.
@@ -200,8 +230,7 @@ export const traceEventApi = {
       body: asJson(payload),
       method: "POST",
     }),
-  list: (batchId: string) =>
-    request<TraceEvent[]>(`/api/batches/${batchId}/trace-events`),
+  list: (batchId: string) => request<TraceEvent[]>(`/api/batches/${batchId}/trace-events`),
 };
 
 // Price APIs support add/update because each batch has one transparent breakdown.
@@ -229,11 +258,7 @@ export const qrApi = {
   create: (batchId: string) =>
     request<QrCode>(`/api/batches/${batchId}/qr-code`, { method: "POST" }),
   get: (batchId: string) =>
-    request<QrCode | null>(
-      `/api/batches/${batchId}/qr-code`,
-      {},
-      { optional404: true },
-    ),
+    request<QrCode | null>(`/api/batches/${batchId}/qr-code`, {}, { optional404: true }),
 };
 
 // Aggregate all farms with farmer details for friendly admin lists.

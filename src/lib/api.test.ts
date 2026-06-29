@@ -8,31 +8,24 @@ describe("getPublicTrace", () => {
   });
 
   it("fetches the public trace endpoint without caching", async () => {
-    const fetchMock = vi.fn(async () =>
-      Response.json({ batch: { cropName: "Tomatoes" } }),
-    );
+    const fetchMock = vi.fn(async () => Response.json({ batch: { cropName: "Tomatoes" } }));
     vi.stubGlobal("fetch", fetchMock);
 
     const trace = await getPublicTrace("public token");
 
     expect(trace.batch?.cropName).toBe("Tomatoes");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/backend/api/public/trace/public%20token",
-      { cache: "no-store" },
-    );
+    expect(fetchMock).toHaveBeenCalledWith("/api/backend/api/public/trace/public%20token", {
+      cache: "no-store",
+    });
   });
 
   it("throws backend message when response is not ok", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        Response.json({ message: "Trace token not found." }, { status: 404 }),
-      ),
+      vi.fn(async () => Response.json({ message: "Trace token not found." }, { status: 404 })),
     );
 
-    await expect(getPublicTrace("missing")).rejects.toThrow(
-      "Trace token not found.",
-    );
+    await expect(getPublicTrace("missing")).rejects.toThrow("Trace token not found.");
   });
 
   it("throws readable message when network request fails", async () => {

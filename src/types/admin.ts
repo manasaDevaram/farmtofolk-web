@@ -1,5 +1,34 @@
 export type Nullable<T> = T | null;
 
+export type UserRole = "ADMIN" | "FIELD_OFFICER" | "FARMER";
+
+export type UserAccount = {
+  id: string;
+  name: string;
+  email: Nullable<string>;
+  phone: Nullable<string>;
+  role: UserRole;
+  gender: Nullable<string>;
+  address: Nullable<string>;
+  active: boolean;
+};
+
+export type LoginResponse = {
+  token: string;
+  user: UserAccount;
+};
+
+export type DashboardSummary = {
+  totalFarmers: number;
+  activeFarmers: number;
+  totalFarms: number;
+  totalBatches: number;
+  pendingPaymentsAmount: number;
+  pendingPaymentBatchCount: number;
+  recentVerifications: number | FarmVerification[];
+  totalQrCodes: number;
+};
+
 export type Farmer = {
   id: string;
   farmerCode: string;
@@ -17,10 +46,7 @@ export type Farmer = {
   updatedAt: string;
 };
 
-export type FarmerPayload = Omit<
-  Farmer,
-  "id" | "active" | "createdAt" | "updatedAt"
->;
+export type FarmerPayload = Omit<Farmer, "id" | "active" | "createdAt" | "updatedAt">;
 
 export type Farm = {
   id: string;
@@ -120,10 +146,7 @@ export type TraceEvent = {
   createdAt: string;
 };
 
-export type TraceEventPayload = Omit<
-  TraceEvent,
-  "id" | "batchId" | "createdAt"
->;
+export type TraceEventPayload = Omit<TraceEvent, "id" | "batchId" | "createdAt">;
 
 export type PriceBreakdown = {
   id: string;

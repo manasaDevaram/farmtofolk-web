@@ -36,12 +36,8 @@ export function TraceAccordionCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-black tracking-tight text-stone-950 sm:text-2xl">
-            {title}
-          </h2>
-          <div className="mt-1 text-sm leading-6 text-stone-700 sm:text-base">
-            {summary}
-          </div>
+          <h2 className="text-xl font-black tracking-tight text-stone-950 sm:text-2xl">{title}</h2>
+          <div className="mt-1 text-sm leading-6 text-stone-700 sm:text-base">{summary}</div>
           {children}
         </div>
         <ChevronIcon
@@ -49,10 +45,7 @@ export function TraceAccordionCard({
         />
       </button>
       {isOpen ? (
-        <div
-          className="border-t border-stone-100 px-4 pb-5 pt-4 sm:px-6 sm:pb-6"
-          id={contentId}
-        >
+        <div className="border-t border-stone-100 px-4 pb-5 pt-4 sm:px-6 sm:pb-6" id={contentId}>
           {openContent}
         </div>
       ) : null}

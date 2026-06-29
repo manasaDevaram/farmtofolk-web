@@ -9,18 +9,16 @@ type BackendRouteContext = {
 // Proxies browser-safe same-origin requests to the Spring Boot backend.
 async function proxyToBackend(request: Request, context: BackendRouteContext) {
   const { path } = await context.params;
-  const backendBaseUrl = (
-    process.env.BACKEND_API_BASE_URL ?? DEFAULT_BACKEND_API_BASE_URL
-  ).replace(/\/$/, "");
+  const backendBaseUrl = (process.env.BACKEND_API_BASE_URL ?? DEFAULT_BACKEND_API_BASE_URL).replace(
+    /\/$/,
+    "",
+  );
   const search = new URL(request.url).search;
   const backendPath = path.map(encodeURIComponent).join("/");
   const backendUrl = `${backendBaseUrl}/${backendPath}${search}`;
   const method = request.method.toUpperCase();
   const headers = buildForwardHeaders(request.headers);
-  const body =
-    method === "GET" || method === "HEAD"
-      ? undefined
-      : await request.arrayBuffer();
+  const body = method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer();
 
   let backendResponse: Response;
 

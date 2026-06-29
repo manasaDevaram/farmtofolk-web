@@ -19,9 +19,7 @@ export default async function PublicTracePage({
   const { publicToken } = await params;
   const trace = await getPublicTrace(publicToken).catch((error: unknown) => {
     const message =
-      error instanceof Error
-        ? error.message
-        : "We could not load this trace page right now.";
+      error instanceof Error ? error.message : "We could not load this trace page right now.";
 
     return { error: message };
   });
@@ -37,9 +35,7 @@ export default async function PublicTracePage({
           <div>
             <div className="flex items-center gap-3 text-emerald-950">
               <LeafIcon className="h-10 w-10 text-emerald-800" />
-              <span className="text-3xl font-black tracking-tight">
-                FarmToFolk
-              </span>
+              <span className="text-3xl font-black tracking-tight">FarmToFolk</span>
             </div>
             <p className="mt-2 text-base font-medium text-stone-800 sm:text-lg">
               Traceable. Transparent. Trusted.
@@ -66,10 +62,7 @@ export default async function PublicTracePage({
           <MoneyBreakdownCard priceBreakdown={trace.priceBreakdown} />
           <FarmMediaCard farmMedia={trace.farmMedia} />
           <TrustSummaryCard trace={trace} />
-          <ProductDetailsCard
-            batch={trace.batch}
-            traceEvents={trace.traceEvents}
-          />
+          <ProductDetailsCard batch={trace.batch} traceEvents={trace.traceEvents} />
         </div>
 
         <TraceFooter />

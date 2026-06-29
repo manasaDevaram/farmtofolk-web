@@ -31,9 +31,7 @@ export function MoneyBreakdownCard({
       openContent={
         <div className="grid gap-5 lg:grid-cols-[0.8fr_1.4fr]">
           <div className="rounded-3xl border border-stone-100 bg-stone-50 p-5">
-            <p className="text-sm font-bold text-stone-600">
-              You Paid (Retail Price)
-            </p>
+            <p className="text-sm font-bold text-stone-600">You Paid (Retail Price)</p>
             <p className="mt-2 text-3xl font-black text-stone-950">
               {formatCurrency(consumerPrice)} / {unit}
             </p>
@@ -55,18 +53,13 @@ export function MoneyBreakdownCard({
                 return (
                   <div key={row.key}>
                     <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                      <span className="font-bold text-stone-800">
-                        {row.label}
-                      </span>
+                      <span className="font-bold text-stone-800">{row.label}</span>
                       <span className="font-black text-stone-950">
                         {formatCurrency(value as number | null)} - {percent}
                       </span>
                     </div>
                     <div className="h-3 overflow-hidden rounded-full bg-stone-100">
-                      <div
-                        className={`h-full rounded-full ${row.color}`}
-                        style={{ width }}
-                      />
+                      <div className={`h-full rounded-full ${row.color}`} style={{ width }} />
                     </div>
                   </div>
                 );
@@ -78,15 +71,16 @@ export function MoneyBreakdownCard({
       summary={
         <>
           <p>
-            Farmer gets{" "}
-            <span className="font-black text-emerald-800">{farmerPercent}</span>{" "}
-            of what you pay
+            Farmer gets <span className="font-black text-emerald-800">{farmerPercent}</span> of what
+            you pay
           </p>
           <div className="mt-2 grid gap-2 font-bold text-stone-950 sm:grid-cols-2">
             <span>
               Farmer Received: {formatCurrency(farmerPrice)} / {unit}
             </span>
-            <span>You Paid: {formatCurrency(consumerPrice)} / {unit}</span>
+            <span>
+              You Paid: {formatCurrency(consumerPrice)} / {unit}
+            </span>
           </div>
         </>
       }
