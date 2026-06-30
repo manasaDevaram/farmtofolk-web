@@ -18,6 +18,37 @@ export type LoginResponse = {
   user: UserAccount;
 };
 
+export type InternalUserRole = "ADMIN" | "FIELD_OFFICER";
+
+export type InternalUserResponse = {
+  id: string;
+  name: string;
+  email: Nullable<string>;
+  phone: Nullable<string>;
+  role: InternalUserRole;
+  active: boolean;
+};
+
+export type CreateInternalUserRequest = {
+  name: string;
+  email: string;
+  phone: string;
+  role: InternalUserRole;
+  active?: boolean;
+  initialPassword: string;
+};
+
+export type UpdateInternalUserRequest = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  active?: boolean;
+};
+
+export type UpdateInternalUserRoleRequest = { role: InternalUserRole };
+
+export type UpdateUserStatusRequest = { active: boolean };
+
 export type DashboardSummary = {
   totalFarmers: number;
   activeFarmers: number;
@@ -48,6 +79,38 @@ export type Farmer = {
 
 export type FarmerPayload = Omit<Farmer, "id" | "active" | "createdAt" | "updatedAt">;
 
+export type FarmerDashboardSummaryResponse = {
+  farmer: FarmerResponse;
+  farms: FarmerDashboardFarmResponse[];
+};
+
+export type FarmerDashboardFarmResponse = {
+  farm: FarmResponse;
+  batches: FarmerDashboardBatchResponse[];
+};
+
+export type FarmerDashboardBatchResponse = {
+  batchId: string;
+  batchCode: string;
+  cropName: string;
+  variety: Nullable<string>;
+  farmName: string;
+  quantityTaken: Nullable<number>;
+  unit: Nullable<string>;
+  batchStatus: Nullable<string>;
+  harvestDate: Nullable<string>;
+  packedDate: Nullable<string>;
+  bestBeforeDate: Nullable<string>;
+  latestTraceStatus: Nullable<string>;
+  farmerPricePerUnit: Nullable<number>;
+  farmerAmountPayable: Nullable<number>;
+  paymentStatus: Nullable<string>;
+  totalQuantitySold: Nullable<number>;
+  quantityRemaining: Nullable<number>;
+  totalSaleAmount: Nullable<number>;
+  currency: Nullable<string>;
+};
+
 export type Farm = {
   id: string;
   farmerId: string;
@@ -64,6 +127,9 @@ export type Farm = {
 };
 
 export type FarmPayload = Omit<Farm, "id" | "createdAt" | "updatedAt">;
+
+export type FarmerResponse = Farmer;
+export type FarmResponse = Farm;
 
 export type Batch = {
   id: string;

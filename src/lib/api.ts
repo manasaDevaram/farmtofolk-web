@@ -1,16 +1,13 @@
 import type { PublicTraceResponse } from "@/types/public-trace";
 
-const SERVER_BACKEND_API_BASE_URL =
-  process.env.BACKEND_API_BASE_URL ?? "http://13.202.215.18:8080/api";
+const API_PROXY_BASE_URL = "/api/backend/api";
 
 export async function getPublicTrace(publicToken: string): Promise<PublicTraceResponse> {
-  const baseUrl = SERVER_BACKEND_API_BASE_URL.replace(/\/$/, "");
-
   let response: Response;
 
   try {
     response = await fetch(
-      `${baseUrl}/public/trace/${encodeURIComponent(publicToken)}`,
+      `${API_PROXY_BASE_URL}/public/trace/${encodeURIComponent(publicToken)}`,
       { cache: "no-store" },
     );
   } catch {

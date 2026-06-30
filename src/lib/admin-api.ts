@@ -19,8 +19,14 @@ import type {
   VerificationEvidence,
   VerificationPayload,
   BatchListItem,
+  CreateInternalUserRequest,
   DashboardSummary,
+  FarmerDashboardSummaryResponse,
+  InternalUserResponse,
   LoginResponse,
+  UpdateInternalUserRequest,
+  UpdateInternalUserRoleRequest,
+  UpdateUserStatusRequest,
 } from "@/types/admin";
 
 const API_PROXY_BASE_URL = "/api/backend";
@@ -61,6 +67,8 @@ async function request<T>(
     return null as T;
   }
 
+  const message = response.ok ? "" : await readErrorMessage(response);
+
   if (response.status === 401 && !options.publicRequest) {
     clearSession();
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
@@ -70,20 +78,10 @@ async function request<T>(
   }
 
   if (response.status === 403) {
-    throw new Error("You do not have permission to perform this action.");
+    throw new Error(message || "Access denied");
   }
 
   if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    let rawBody = "";
-    try {
-      rawBody = await response.text();
-      const body = JSON.parse(rawBody) as { message?: string; error?: string };
-      message = body.message ?? body.error ?? message;
-    } catch {
-      // Keep status-based fallback.
-    }
-    console.error("Admin API error", { body: rawBody, status: response.status, url });
     throw new Error(message);
   }
 
@@ -92,6 +90,49 @@ async function request<T>(
 }
 
 const asJson = (body: unknown) => JSON.stringify(body);
+
+async function readErrorMessage(response: Response) {
+  const fallback = `Request failed with status ${response.status}`;
+  const rawBody = await response.text();
+  if (!rawBody.trim()) return fallback;
+
+  try {
+    const body = JSON.parse(rawBody) as {
+      detail?: string;
+      error?: string;
+      errors?: unknown;
+      message?: string;
+      title?: string;
+    };
+    const directMessage = body.message ?? body.detail ?? body.error ?? body.title;
+    if (directMessage) return directMessage;
+
+    if (Array.isArray(body.errors)) {
+      const messages = body.errors
+        .map((error) => {
+          if (typeof error === "string") return error;
+          if (error && typeof error === "object") {
+            const value = error as { defaultMessage?: string; message?: string };
+            return value.defaultMessage ?? value.message;
+          }
+          return undefined;
+        })
+        .filter(Boolean);
+      if (messages.length) return messages.join(". ");
+    }
+
+    if (body.errors && typeof body.errors === "object") {
+      const messages = Object.values(body.errors)
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
+        .filter((value): value is string => typeof value === "string");
+      if (messages.length) return messages.join(". ");
+    }
+  } catch {
+    if (!rawBody.trimStart().startsWith("<")) return rawBody.trim();
+  }
+
+  return fallback;
+}
 
 export const authApi = {
   login: (emailOrPhone: string, password: string) =>
@@ -108,6 +149,41 @@ export const authApi = {
 export const dashboardApi = {
   summary: () =>
     request<DashboardSummary>("/api/admin/dashboard/summary", {
+      cache: "no-store",
+    }),
+};
+
+export const adminUserApi = {
+  create: (payload: CreateInternalUserRequest) =>
+    request<InternalUserResponse>("/api/admin/users", {
+      body: asJson(payload),
+      method: "POST",
+    }),
+  get: (userId: string) =>
+    request<InternalUserResponse>(`/api/admin/users/${userId}`),
+  list: () => request<InternalUserResponse[]>("/api/admin/users"),
+  update: (userId: string, payload: UpdateInternalUserRequest) =>
+    request<InternalUserResponse>(`/api/admin/users/${userId}`, {
+      body: asJson(payload),
+      method: "PATCH",
+    }),
+  updateRole: (userId: string, payload: UpdateInternalUserRoleRequest) =>
+    request<InternalUserResponse>(`/api/admin/users/${userId}/role`, {
+      body: asJson(payload),
+      method: "PATCH",
+    }),
+  updateStatus: (userId: string, payload: UpdateUserStatusRequest) =>
+    request<InternalUserResponse>(`/api/admin/users/${userId}/status`, {
+      body: asJson(payload),
+      method: "PATCH",
+    }),
+};
+
+export const internalUserApi = adminUserApi;
+
+export const farmerDashboardApi = {
+  summary: () =>
+    request<FarmerDashboardSummaryResponse>("/api/farmer-dashboard/me", {
       cache: "no-store",
     }),
 };

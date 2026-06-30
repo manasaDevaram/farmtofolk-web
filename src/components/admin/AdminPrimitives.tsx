@@ -11,6 +11,7 @@ const navigation = [
   { href: "/admin/farmers", icon: "♙", label: "Farmers" },
   { href: "/admin/farms", icon: "⌂", label: "Farms" },
   { href: "/admin/batches", icon: "▣", label: "Batches" },
+  { href: "/admin/users", icon: "♟", label: "Users" },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
