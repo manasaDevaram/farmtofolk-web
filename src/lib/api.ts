@@ -1,13 +1,13 @@
 import type { PublicTraceResponse } from "@/types/public-trace";
 
-const API_PROXY_BASE_URL = "/api/backend/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 export async function getPublicTrace(publicToken: string): Promise<PublicTraceResponse> {
   let response: Response;
 
   try {
     response = await fetch(
-      `${API_PROXY_BASE_URL}/public/trace/${encodeURIComponent(publicToken)}`,
+      `${API_BASE_URL.replace(/\/$/, "")}/api/public/trace/${encodeURIComponent(publicToken)}`,
       { cache: "no-store" },
     );
   } catch {
@@ -22,7 +22,7 @@ export async function getPublicTrace(publicToken: string): Promise<PublicTraceRe
     try {
       const body = (await response.json()) as { message?: string; error?: string };
       message = body.message ?? body.error ?? message;
-    } catch { }
+    } catch {}
 
     throw new Error(message);
   }
