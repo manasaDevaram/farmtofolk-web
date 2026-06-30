@@ -1,14 +1,18 @@
 import type { PublicTraceResponse } from "@/types/public-trace";
 
-const API_PROXY_BASE_URL = "/api/backend";
+const SERVER_BACKEND_API_BASE_URL =
+  process.env.BACKEND_API_BASE_URL ?? "http://13.202.215.18:8080/api";
 
 export async function getPublicTrace(publicToken: string): Promise<PublicTraceResponse> {
-  const endpoint = `${API_PROXY_BASE_URL}/api/public/trace/${encodeURIComponent(publicToken)}`;
+  const baseUrl = SERVER_BACKEND_API_BASE_URL.replace(/\/$/, "");
 
   let response: Response;
 
   try {
-    response = await fetch(endpoint, { cache: "no-store" });
+    response = await fetch(
+      `${baseUrl}/public/trace/${encodeURIComponent(publicToken)}`,
+      { cache: "no-store" },
+    );
   } catch {
     throw new Error(
       "Unable to reach FarmToFolk trace service. Please check your connection and try again.",
@@ -21,9 +25,7 @@ export async function getPublicTrace(publicToken: string): Promise<PublicTraceRe
     try {
       const body = (await response.json()) as { message?: string; error?: string };
       message = body.message ?? body.error ?? message;
-    } catch {
-      // Keep the readable status message when the backend does not return JSON.
-    }
+    } catch { }
 
     throw new Error(message);
   }
