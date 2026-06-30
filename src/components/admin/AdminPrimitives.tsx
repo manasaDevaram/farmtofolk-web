@@ -4,19 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { BotanicalCorner, EmptyBasket, LeafMark } from "@/components/assets/FarmToFolkAssets";
-import { clearSession } from "@/lib/auth-session";
+import { clearSession, getSessionUser } from "@/lib/auth-session";
 
 const navigation = [
-  { href: "/admin", icon: "⌂", label: "Dashboard" },
-  { href: "/admin/farmers", icon: "♙", label: "Farmers" },
-  { href: "/admin/farms", icon: "⌂", label: "Farms" },
-  { href: "/admin/batches", icon: "▣", label: "Batches" },
-  { href: "/admin/users", icon: "♟", label: "Users" },
+  { href: "/admin", icon: "D", label: "Dashboard" },
+  { href: "/admin/farmers", icon: "P", label: "Farmers" },
+  { href: "/admin/farms", icon: "F", label: "Farms" },
+  { href: "/admin/batches", icon: "B", label: "Batches" },
+  { adminOnly: true, href: "/admin/users", icon: "U", label: "Users" },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const currentUser = getSessionUser();
+  const visibleNavigation = navigation.filter(
+    (item) => !item.adminOnly || currentUser?.role === "ADMIN",
+  );
 
   function signOut() {
     clearSession();
@@ -35,7 +39,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </p>
 
         <nav aria-label="Admin navigation" className="mt-9 space-y-1.5">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <NavLink
               active={isActivePath(pathname, item.href)}
               href={item.href}
@@ -75,7 +79,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         aria-label="Mobile admin navigation"
         className="fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl border border-[var(--ftf-border)] bg-[rgba(31,61,37,.96)] p-2 text-white shadow-xl backdrop-blur md:hidden"
       >
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const active = isActivePath(pathname, item.href);
           return (
             <Link

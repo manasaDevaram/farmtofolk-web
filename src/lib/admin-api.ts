@@ -29,10 +29,10 @@ import type {
   UpdateUserStatusRequest,
 } from "@/types/admin";
 
-const API_PROXY_BASE_URL = "/api/backend";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 function baseUrl() {
-  return API_PROXY_BASE_URL;
+  return API_BASE_URL.replace(/\/$/, "");
 }
 
 async function request<T>(
@@ -159,8 +159,7 @@ export const adminUserApi = {
       body: asJson(payload),
       method: "POST",
     }),
-  get: (userId: string) =>
-    request<InternalUserResponse>(`/api/admin/users/${userId}`),
+  get: (userId: string) => request<InternalUserResponse>(`/api/admin/users/${userId}`),
   list: () => request<InternalUserResponse[]>("/api/admin/users"),
   update: (userId: string, payload: UpdateInternalUserRequest) =>
     request<InternalUserResponse>(`/api/admin/users/${userId}`, {

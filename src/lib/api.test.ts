@@ -1,7 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPublicTrace } from "./api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+let getPublicTrace: typeof import("./api").getPublicTrace;
 
 describe("getPublicTrace", () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://backend.test");
+    ({ getPublicTrace } = await import("./api"));
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -14,9 +21,12 @@ describe("getPublicTrace", () => {
     const trace = await getPublicTrace("public token");
 
     expect(trace.batch?.cropName).toBe("Tomatoes");
-    expect(fetchMock).toHaveBeenCalledWith("/api/backend/api/public/trace/public%20token", {
-      cache: "no-store",
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://backend.test/api/public/trace/public%20token",
+      {
+        cache: "no-store",
+      },
+    );
   });
 
   it("throws backend message when response is not ok", async () => {
