@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/lib/api-config";
 import { clearSession, getSessionToken } from "@/lib/auth-session";
 import type {
   Batch,
@@ -29,18 +30,12 @@ import type {
   UpdateUserStatusRequest,
 } from "@/types/admin";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
-
-function baseUrl() {
-  return API_BASE_URL.replace(/\/$/, "");
-}
-
 async function request<T>(
   path: string,
   init: RequestInit = {},
   options: { optional404?: boolean; publicRequest?: boolean } = {},
 ): Promise<T> {
-  const url = `${baseUrl()}${path}`;
+  const url = `${API_BASE_URL}${path}`;
   let response: Response;
 
   try {
