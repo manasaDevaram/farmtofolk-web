@@ -56,7 +56,7 @@ export type DashboardSummary = {
   totalBatches: number;
   pendingPaymentsAmount: number;
   pendingPaymentBatchCount: number;
-  recentVerifications: number | FarmVerification[];
+  recentVerifications: FarmVerification[];
   totalQrCodes: number;
 };
 
@@ -86,29 +86,25 @@ export type FarmerDashboardSummaryResponse = {
 
 export type FarmerDashboardFarmResponse = {
   farm: FarmResponse;
-  batches: FarmerDashboardBatchResponse[];
+  batches: FarmerDashboardWorkBatchResponse[];
 };
 
-export type FarmerDashboardBatchResponse = {
+export type FarmerDashboardWorkBatchResponse = {
   batchId: string;
   batchCode: string;
   cropName: string;
-  variety: Nullable<string>;
-  farmName: string;
-  quantityTaken: Nullable<number>;
-  unit: Nullable<string>;
+  currentTraceStatus: Nullable<string>;
   batchStatus: Nullable<string>;
   harvestDate: Nullable<string>;
-  packedDate: Nullable<string>;
-  bestBeforeDate: Nullable<string>;
-  latestTraceStatus: Nullable<string>;
-  farmerPricePerUnit: Nullable<number>;
-  farmerAmountPayable: Nullable<number>;
+  quantityProduced: Nullable<number>;
+  quantitySold: Nullable<number>;
+  remainingQuantity: Nullable<number>;
+  farmerPrice: Nullable<number>;
+  consumerPrice: Nullable<number>;
+  amountPayable: Nullable<number>;
   paymentStatus: Nullable<string>;
-  totalQuantitySold: Nullable<number>;
-  quantityRemaining: Nullable<number>;
-  totalSaleAmount: Nullable<number>;
-  currency: Nullable<string>;
+  saleAmount: Nullable<number>;
+  lastUpdated: Nullable<string>;
 };
 
 export type Farm = {

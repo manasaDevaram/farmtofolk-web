@@ -114,12 +114,7 @@ function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
     maximumFractionDigits: 0,
     style: "currency",
   });
-  const recentVerifications = Array.isArray(summary.recentVerifications)
-    ? summary.recentVerifications
-    : [];
-  const recentVerificationCount = Array.isArray(summary.recentVerifications)
-    ? summary.recentVerifications.length
-    : summary.recentVerifications;
+  const recentVerificationCount = summary.recentVerifications.length;
 
   return (
     <>
@@ -165,8 +160,8 @@ function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
             <span className="ftf-stamp">{recentVerificationCount} recent</span>
           </div>
           <div className="mt-5 divide-y divide-[var(--ftf-border)]">
-            {recentVerifications.length ? (
-              recentVerifications.map((verification) => (
+            {summary.recentVerifications.length ? (
+              summary.recentVerifications.map((verification) => (
                 <div className="flex items-center justify-between gap-4 py-3" key={verification.id}>
                   <div>
                     <p className="font-bold">
@@ -181,9 +176,7 @@ function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
               ))
             ) : (
               <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">
-                {recentVerificationCount
-                  ? `${recentVerificationCount} recent verifications recorded.`
-                  : "No recent verification activity."}
+                No recent verification activity.
               </p>
             )}
           </div>
@@ -876,6 +869,7 @@ function FarmerMediaUpload({
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const previewUrl = useFilePreview(file);
+  const displayUrl = previewUrl ?? currentUrl;
 
   async function upload() {
     if (!file) return;
@@ -896,7 +890,7 @@ function FarmerMediaUpload({
         <MediaPreview
           className="aspect-square rounded-2xl"
           type={previewType}
-          url={previewUrl || currentUrl}
+          url={displayUrl}
         />
         <div className="grid gap-3">
           <DropUpload

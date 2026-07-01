@@ -6,21 +6,21 @@ import { useCallback, useEffect, useState } from "react";
 import { LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { Card, ErrorState, InfoGrid, LoadingState } from "@/components/admin/AdminPrimitives";
 import { farmerDashboardApi } from "@/lib/admin-api";
-import type { FarmerDashboardBatchResponse, FarmerDashboardSummaryResponse } from "@/types/admin";
+import type {
+  FarmerDashboardSummaryResponse,
+  FarmerDashboardWorkBatchResponse,
+} from "@/types/admin";
 
-const shown = (value: string | number | null, suffix = "") =>
-  value === null || value === "" ? "Not available" : `${value}${suffix}`;
+const shown = (value: string | number | null | undefined) =>
+  value === null || value === undefined || value === "" ? "Not available" : String(value);
 
-function BatchCard({ batch }: { batch: FarmerDashboardBatchResponse }) {
-  const quantity = (value: number | null) =>
-    shown(value, value === null || !batch.unit ? "" : ` ${batch.unit}`);
-
+function BatchCard({ batch }: { batch: FarmerDashboardWorkBatchResponse }) {
   return (
     <article className="rounded-2xl border border-[var(--ftf-border)] bg-white/55 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-xl font-bold">{batch.cropName}</h3>
-          <p className="text-sm text-[var(--ftf-muted)]">{batch.variety || "Variety not specified"}</p>
+          <h3 className="text-xl font-bold">{shown(batch.cropName)}</h3>
+          <p className="text-sm text-[var(--ftf-muted)]">Batch ID: {shown(batch.batchId)}</p>
         </div>
         <span className="ftf-stamp">{batch.batchCode}</span>
       </div>
@@ -28,17 +28,17 @@ function BatchCard({ batch }: { batch: FarmerDashboardBatchResponse }) {
         <InfoGrid
           items={[
             { label: "Batch status", value: shown(batch.batchStatus) },
-            { label: "Latest trace status", value: shown(batch.latestTraceStatus) },
+            { label: "Latest trace status", value: shown(batch.currentTraceStatus) },
             { label: "Payment status", value: shown(batch.paymentStatus) },
-            { label: "Farmer price per unit", value: shown(batch.farmerPricePerUnit) },
-            { label: "Farmer amount payable", value: shown(batch.farmerAmountPayable) },
-            { label: "Quantity taken", value: quantity(batch.quantityTaken) },
-            { label: "Quantity sold", value: quantity(batch.totalQuantitySold) },
-            { label: "Quantity remaining", value: quantity(batch.quantityRemaining) },
-            { label: "Total sale amount", value: shown(batch.totalSaleAmount) },
-            { label: "Currency", value: shown(batch.currency) },
+            { label: "Quantity produced", value: shown(batch.quantityProduced) },
+            { label: "Quantity sold", value: shown(batch.quantitySold) },
+            { label: "Quantity remaining", value: shown(batch.remainingQuantity) },
+            { label: "Farmer price per unit", value: shown(batch.farmerPrice) },
+            { label: "Consumer price", value: shown(batch.consumerPrice) },
+            { label: "Farmer amount payable", value: shown(batch.amountPayable) },
+            { label: "Total sale amount", value: shown(batch.saleAmount) },
             { label: "Harvest date", value: shown(batch.harvestDate) },
-            { label: "Best before date", value: shown(batch.bestBeforeDate) },
+            { label: "Last updated", value: shown(batch.lastUpdated) },
           ]}
         />
       </div>

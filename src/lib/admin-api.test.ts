@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("authApi", () => {
+describe("dashboard API routes", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.nammafarmers.in");
@@ -26,5 +26,31 @@ describe("authApi", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.nammafarmers.in/api/auth/login");
+  });
+
+  it("loads the farmer dashboard directly from its aggregate endpoint", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ farmer: {}, farms: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { farmerDashboardApi } = await import("./admin-api");
+
+    await farmerDashboardApi.summary();
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.nammafarmers.in/api/farmer-dashboard/me",
+    );
+  });
+
+  it("loads the admin dashboard from its backend summary endpoint only", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ recentVerifications: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { dashboardApi } = await import("./admin-api");
+
+    await dashboardApi.summary();
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.nammafarmers.in/api/admin/dashboard/summary",
+    );
   });
 });

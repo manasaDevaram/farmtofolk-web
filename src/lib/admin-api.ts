@@ -69,7 +69,7 @@ async function request<T>(
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
       window.location.replace("/login");
     }
-    throw new Error("Your session has expired. Please sign in again.");
+    throw new Error(message || "Your session has expired. Please sign in again.");
   }
 
   if (response.status === 403) {
