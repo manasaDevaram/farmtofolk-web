@@ -18,13 +18,15 @@ vi.mock("@/lib/api", () => ({
 const sampleTrace: PublicTraceResponse = {
   batch: {
     batchCode: "BATCH-001",
+    consumerPricePerUnit: 80,
     cropName: "Tomatoes",
     createdAt: "2026-06-20T00:00:00Z",
-    farmId: "farm-1",
-    farmerId: "farmer-1",
+    farmerPricePerUnit: 52,
     harvestDate: "2026-06-20",
     id: "batch-1",
-    quantity: 120,
+    operationalCostPerUnit: 28,
+    quantityReceived: 120,
+    receivedDate: "2026-06-20",
     status: "READY",
     unit: "kg",
     updatedAt: "2026-06-21T00:00:00Z",
@@ -76,17 +78,6 @@ const sampleTrace: PublicTraceResponse = {
     verifiedByUserId: null,
     observations: "Farm practices are in line with agroecological principles.",
   },
-  priceBreakdown: {
-    batchId: "batch-1",
-    consumerPrice: 80,
-    createdAt: "2026-06-21T00:00:00Z",
-    currency: "INR",
-    farmerPrice: 52,
-    id: "price-1",
-    operationalCost: 28,
-    priceUnit: "kg",
-    updatedAt: "2026-06-21T00:00:00Z",
-  },
   qrCode: {
     batchId: "batch-1",
     expiresAt: null,
@@ -97,7 +88,6 @@ const sampleTrace: PublicTraceResponse = {
     qrImageUrl: null,
     qrType: "PUBLIC_TRACE",
   },
-  scanCount: 12,
   traceEvents: [],
   verificationEvidence: [],
 };
@@ -161,7 +151,7 @@ describe("public trace page", () => {
   });
 
   it("shows only the public price summary", () => {
-    render(<MoneyBreakdownCard priceBreakdown={sampleTrace.priceBreakdown} />);
+    render(<MoneyBreakdownCard batch={sampleTrace.batch} />);
 
     expect(screen.getByText(/You paid/i)).toBeInTheDocument();
     expect(screen.getByText(/Farmer received/i)).toBeInTheDocument();

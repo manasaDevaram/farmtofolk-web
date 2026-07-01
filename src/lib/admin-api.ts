@@ -4,6 +4,9 @@ import type {
   Batch,
   BatchPayload,
   BatchWithRelations,
+  BatchUsage,
+  CreateBatchUsagePayload,
+  CreateBatchWastePayload,
   Farm,
   Farmer,
   FarmerPayload,
@@ -12,8 +15,6 @@ import type {
   FarmListItem,
   FarmVerification,
   FarmWithFarmer,
-  PriceBreakdown,
-  PriceBreakdownPayload,
   QrCode,
   TraceEvent,
   TraceEventPayload,
@@ -21,7 +22,7 @@ import type {
   VerificationPayload,
   BatchListItem,
   CreateInternalUserRequest,
-  DashboardSummary,
+  AdminDashboardResponse,
   FarmerDashboardSummaryResponse,
   InternalUserResponse,
   LoginResponse,
@@ -143,9 +144,16 @@ export const authApi = {
 
 export const dashboardApi = {
   summary: () =>
-    request<DashboardSummary>("/api/admin/dashboard/summary", {
+    request<AdminDashboardResponse>("/api/admin/dashboard", {
       cache: "no-store",
     }),
+  pendingPayments: () => request<Batch[]>("/api/admin/dashboard/pending-payments"),
+  pendingVerifications: () =>
+    request<FarmVerification[]>("/api/admin/dashboard/pending-verifications"),
+  upcomingVerifications: () =>
+    request<FarmVerification[]>("/api/admin/dashboard/upcoming-verifications"),
+  batchInventory: () => request<Batch[]>("/api/admin/dashboard/batch-inventory"),
+  highWastageBatches: () => request<Batch[]>("/api/admin/dashboard/high-wastage-batches"),
 };
 
 export const adminUserApi = {
@@ -245,6 +253,20 @@ export const batchApi = {
     }),
 };
 
+export const batchUsageApi = {
+  list: (batchId: string) => request<BatchUsage[]>(`/api/batches/${batchId}/usage`),
+  create: (batchId: string, payload: CreateBatchUsagePayload) =>
+    request<BatchUsage>(`/api/batches/${batchId}/usage`, {
+      body: asJson(payload),
+      method: "POST",
+    }),
+  waste: (batchId: string, payload: CreateBatchWastePayload) =>
+    request<BatchUsage>(`/api/batches/${batchId}/waste`, {
+      body: asJson(payload),
+      method: "POST",
+    }),
+};
+
 // Farm media APIs handle gallery upload, listing, and deletion.
 export const mediaApi = {
   delete: (mediaId: string) => request<void>(`/api/farm-media/${mediaId}`, { method: "DELETE" }),
@@ -301,26 +323,6 @@ export const traceEventApi = {
       method: "POST",
     }),
   list: (batchId: string) => request<TraceEvent[]>(`/api/batches/${batchId}/trace-events`),
-};
-
-// Price APIs support add/update because each batch has one transparent breakdown.
-export const priceApi = {
-  create: (batchId: string, payload: PriceBreakdownPayload) =>
-    request<PriceBreakdown>(`/api/batches/${batchId}/price-breakdown`, {
-      body: asJson(payload),
-      method: "POST",
-    }),
-  get: (batchId: string) =>
-    request<PriceBreakdown | null>(
-      `/api/batches/${batchId}/price-breakdown`,
-      {},
-      { optional404: true },
-    ),
-  update: (batchId: string, payload: PriceBreakdownPayload) =>
-    request<PriceBreakdown>(`/api/batches/${batchId}/price-breakdown`, {
-      body: asJson(payload),
-      method: "PUT",
-    }),
 };
 
 // QR APIs generate and fetch the public trace token for a batch.

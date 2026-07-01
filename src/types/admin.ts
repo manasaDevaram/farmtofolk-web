@@ -49,15 +49,15 @@ export type UpdateInternalUserRoleRequest = { role: InternalUserRole };
 
 export type UpdateUserStatusRequest = { active: boolean };
 
-export type DashboardSummary = {
-  totalFarmers: number;
-  activeFarmers: number;
-  totalFarms: number;
-  totalBatches: number;
-  pendingPaymentsAmount: number;
-  pendingPaymentBatchCount: number;
-  recentVerifications: FarmVerification[];
-  totalQrCodes: number;
+export type AdminDashboardResponse = {
+  payments: { pendingAmount: number; pendingCount: number };
+  verifications: { pendingCount: number; upcomingCount: number };
+  inventory: {
+    totalAvailableQuantity: number;
+    totalSoldQuantity: number;
+    totalWastedQuantity: number;
+  };
+  secondaryCounts: { farmers: number; farms: number; batches: number };
 };
 
 export type Farmer = {
@@ -93,18 +93,19 @@ export type FarmerDashboardWorkBatchResponse = {
   batchId: string;
   batchCode: string;
   cropName: string;
-  currentTraceStatus: Nullable<string>;
+  currentTraceStatus?: Nullable<string>;
   batchStatus: Nullable<string>;
   harvestDate: Nullable<string>;
-  quantityProduced: Nullable<number>;
+  quantityReceived: Nullable<number>;
   quantitySold: Nullable<number>;
-  remainingQuantity: Nullable<number>;
-  farmerPrice: Nullable<number>;
-  consumerPrice: Nullable<number>;
-  amountPayable: Nullable<number>;
+  quantityWasted: Nullable<number>;
+  quantityUsedInProduct: Nullable<number>;
+  quantityAvailable: Nullable<number>;
+  farmerPricePerUnit: Nullable<number>;
+  totalFarmerAmount: Nullable<number>;
   paymentStatus: Nullable<string>;
-  saleAmount: Nullable<number>;
-  lastUpdated: Nullable<string>;
+  consumerPricePerUnit: Nullable<number>;
+  lastUpdated?: Nullable<string>;
 };
 
 export type Farm = {
@@ -134,15 +135,74 @@ export type Batch = {
   farmerId: string;
   cropName: string;
   variety: Nullable<string>;
-  quantity: number;
+  quantityReceived: number;
+  quantitySold: number;
+  quantityWasted: number;
+  quantityUsedInProduct: number;
+  quantityAvailable: number;
   unit: string;
   harvestDate: string;
+  receivedDate: string;
+  farmerPricePerUnit: number;
+  totalFarmerAmount: number;
+  paymentStatus: string;
+  consumerPricePerUnit: number;
+  operationalCostPerUnit: number;
   status: string;
   createdAt: string;
   updatedAt: string;
 };
 
-export type BatchPayload = Omit<Batch, "id" | "createdAt" | "updatedAt">;
+export type BatchPayload = {
+  batchCode?: string;
+  farmerId: string;
+  farmId: string;
+  cropName: string;
+  variety: Nullable<string>;
+  quantityReceived: number;
+  unit: string;
+  harvestDate: string;
+  receivedDate: string;
+  farmerPricePerUnit: number;
+  paymentStatus: string;
+  consumerPricePerUnit: number;
+  operationalCostPerUnit: number;
+  status: string;
+};
+
+export type BatchUsageType =
+  "SOLD_ONLINE" | "SOLD_OFFLINE" | "CAFE" | "EXPERIENCE_CENTRE" | "USED_IN_PRODUCT" | "WASTED";
+
+export type BatchUsage = {
+  id: string;
+  batchId: string;
+  usageType: BatchUsageType;
+  quantity: number;
+  pricePerUnit: Nullable<number>;
+  customerName: Nullable<string>;
+  customerType: Nullable<string>;
+  reason: Nullable<string>;
+  notes: Nullable<string>;
+  recordedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateBatchUsagePayload = {
+  usageType: BatchUsageType;
+  quantity: number;
+  pricePerUnit?: Nullable<number>;
+  customerName?: Nullable<string>;
+  customerType?: Nullable<string>;
+  reason?: Nullable<string>;
+  notes?: Nullable<string>;
+  recordedAt?: Nullable<string>;
+};
+
+export type CreateBatchWastePayload = Pick<
+  CreateBatchUsagePayload,
+  "quantity" | "reason" | "notes" | "recordedAt"
+>;
 
 export type FarmMedia = {
   id: string;
@@ -207,23 +267,6 @@ export type TraceEvent = {
 };
 
 export type TraceEventPayload = Omit<TraceEvent, "id" | "batchId" | "createdAt">;
-
-export type PriceBreakdown = {
-  id: string;
-  batchId: string;
-  consumerPrice: number;
-  farmerPrice: number;
-  operationalCost: number;
-  currency: string;
-  priceUnit: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PriceBreakdownPayload = Omit<
-  PriceBreakdown,
-  "id" | "batchId" | "createdAt" | "updatedAt"
->;
 
 export type QrCode = {
   id: string;

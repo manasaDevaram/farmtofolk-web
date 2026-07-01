@@ -1,16 +1,12 @@
-import type { PublicTracePriceBreakdown } from "@/types/public-trace";
+import type { PublicTraceBatch } from "@/types/public-trace";
 import { TraceAccordionCard } from "./TraceAccordionCard";
 import { formatCurrency } from "./trace-utils";
 
-export function MoneyBreakdownCard({
-  priceBreakdown,
-}: {
-  priceBreakdown?: PublicTracePriceBreakdown | null;
-}) {
-  const consumerPrice = priceBreakdown?.consumerPrice;
-  const farmerPrice = priceBreakdown?.farmerPrice;
-  const operationalCost = priceBreakdown?.operationalCost;
-  const unit = priceBreakdown?.priceUnit || "kg";
+export function MoneyBreakdownCard({ batch }: { batch?: PublicTraceBatch | null }) {
+  const consumerPrice = batch?.consumerPricePerUnit;
+  const farmerPrice = batch?.farmerPricePerUnit;
+  const operationalCost = batch?.operationalCostPerUnit;
+  const unit = batch?.unit || "unit";
 
   return (
     <TraceAccordionCard
@@ -41,9 +37,15 @@ export function MoneyBreakdownCard({
       summary={
         <>
           <div className="grid gap-2 font-bold text-stone-950 sm:grid-cols-3">
-            <span>You paid: {formatCurrency(consumerPrice)} / {unit}</span>
-            <span>Farmer received: {formatCurrency(farmerPrice)} / {unit}</span>
-            <span>Farm-to-consumer cost: {formatCurrency(operationalCost)} / {unit}</span>
+            <span>
+              You paid: {formatCurrency(consumerPrice)} / {unit}
+            </span>
+            <span>
+              Farmer received: {formatCurrency(farmerPrice)} / {unit}
+            </span>
+            <span>
+              Farm-to-consumer cost: {formatCurrency(operationalCost)} / {unit}
+            </span>
           </div>
         </>
       }

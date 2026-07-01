@@ -21,12 +21,13 @@ export function ProductDetailsCard({
             <FieldRow
               label="Quantity"
               value={
-                batch?.quantity
-                  ? `${formatNumber(batch.quantity)} ${batch.unit || ""}`.trim()
+                batch?.quantityReceived
+                  ? `${formatNumber(batch.quantityReceived)} ${batch.unit || ""}`.trim()
                   : null
               }
             />
             <FieldRow label="Harvest Date" value={formatDate(batch?.harvestDate)} />
+            <FieldRow label="Received Date" value={formatDate(batch?.receivedDate)} />
             <FieldRow label="Status" value={toTitleCase(batch?.status)} />
           </dl>
           <div>
