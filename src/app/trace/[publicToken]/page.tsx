@@ -59,7 +59,7 @@ export default async function PublicTracePage({
             evidence={trace.verificationEvidence}
             verification={trace.latestVerification}
           />
-          <MoneyBreakdownCard priceBreakdown={trace.priceBreakdown} />
+          <MoneyBreakdownCard batch={trace.batch} />
           <FarmMediaCard farmMedia={trace.farmMedia} />
           <TrustSummaryCard trace={trace} />
           <ProductDetailsCard batch={trace.batch} traceEvents={trace.traceEvents} />

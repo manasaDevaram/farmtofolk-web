@@ -36,21 +36,17 @@ describe("dashboard API routes", () => {
     await farmerDashboardApi.summary();
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.nammafarmers.in/api/farmer-dashboard/me",
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.nammafarmers.in/api/farmer-dashboard/me");
   });
 
-  it("loads the admin dashboard from its backend summary endpoint only", async () => {
-    const fetchMock = vi.fn(async () => Response.json({ recentVerifications: [] }));
+  it("loads the admin dashboard from its aggregate endpoint", async () => {
+    const fetchMock = vi.fn(async () => Response.json({}));
     vi.stubGlobal("fetch", fetchMock);
     const { dashboardApi } = await import("./admin-api");
 
     await dashboardApi.summary();
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://api.nammafarmers.in/api/admin/dashboard/summary",
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.nammafarmers.in/api/admin/dashboard");
   });
 });

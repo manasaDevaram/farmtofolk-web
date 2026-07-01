@@ -19,7 +19,7 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
   if (trace.verificationEvidence?.some((item) => item.isPublic)) {
     active.add("Evidence Available");
   }
-  if (trace.priceBreakdown?.consumerPrice) active.add("Transparent Pricing");
+  if (trace.batch?.consumerPricePerUnit != null) active.add("Transparent Pricing");
   if (trace.batch || trace.qrCode) active.add("Traceable Batch");
   active.add("Data Integrity Ready");
 

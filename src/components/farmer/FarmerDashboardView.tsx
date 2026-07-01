@@ -31,13 +31,14 @@ function BatchCard({ batch }: { batch: FarmerDashboardWorkBatchResponse }) {
             { label: "Batch status", value: shown(batch.batchStatus) },
             { label: "Latest trace status", value: shown(batch.currentTraceStatus) },
             { label: "Payment status", value: shown(batch.paymentStatus) },
-            { label: "Quantity produced", value: shown(batch.quantityProduced) },
+            { label: "Quantity received", value: shown(batch.quantityReceived) },
             { label: "Quantity sold", value: shown(batch.quantitySold) },
-            { label: "Quantity remaining", value: shown(batch.remainingQuantity) },
-            { label: "Farmer price per unit", value: shown(batch.farmerPrice) },
-            { label: "Consumer price", value: shown(batch.consumerPrice) },
-            { label: "Farmer amount payable", value: shown(batch.amountPayable) },
-            { label: "Total sale amount", value: shown(batch.saleAmount) },
+            { label: "Quantity wasted", value: shown(batch.quantityWasted) },
+            { label: "Used in product", value: shown(batch.quantityUsedInProduct) },
+            { label: "Quantity available", value: shown(batch.quantityAvailable) },
+            { label: "Farmer price per unit", value: shown(batch.farmerPricePerUnit) },
+            { label: "Total farmer amount", value: shown(batch.totalFarmerAmount) },
+            { label: "Consumer price per unit", value: shown(batch.consumerPricePerUnit) },
             { label: "Harvest date", value: shown(batch.harvestDate) },
             { label: "Last updated", value: shown(batch.lastUpdated) },
           ]}
@@ -77,7 +78,9 @@ export function FarmerDashboardView() {
           </div>
         </header>
         <h1 className="mt-8 text-3xl font-bold">Farmer Profile</h1>
-        <div className="mt-4">{loading ? <LoadingState label="Loading your farm records..." /> : null}</div>
+        <div className="mt-4">
+          {loading ? <LoadingState label="Loading your farm records..." /> : null}
+        </div>
         {error ? <ErrorState message={error} onRetry={load} /> : null}
         {summary ? (
           <>
@@ -102,21 +105,46 @@ export function FarmerDashboardView() {
                   />
                 ) : null}
               </div>
-              <InfoGrid items={[
-                { label: "Name", value: summary.farmer.name },
-                { label: "Farmer code", value: summary.farmer.farmerCode },
-                { label: "Phone", value: summary.farmer.phone },
-                { label: "Location", value: [summary.farmer.village, summary.farmer.district, summary.farmer.state].filter(Boolean).join(", ") },
-              ]} />
+              <InfoGrid
+                items={[
+                  { label: "Name", value: summary.farmer.name },
+                  { label: "Farmer code", value: summary.farmer.farmerCode },
+                  { label: "Phone", value: summary.farmer.phone },
+                  {
+                    label: "Location",
+                    value: [summary.farmer.village, summary.farmer.district, summary.farmer.state]
+                      .filter(Boolean)
+                      .join(", "),
+                  },
+                ]}
+              />
             </Card>
             <div className="mt-5 space-y-5">
-              {!summary.farms.length ? <Card><p className="text-center font-bold text-[var(--ftf-muted)]">No farms added yet.</p></Card> : null}
+              {!summary.farms.length ? (
+                <Card>
+                  <p className="text-center font-bold text-[var(--ftf-muted)]">
+                    No farms added yet.
+                  </p>
+                </Card>
+              ) : null}
               {summary.farms.map(({ farm, batches }) => (
                 <Card key={farm.id}>
                   <h2 className="text-2xl font-bold">{farm.farmName}</h2>
-                  <p className="mt-1 text-sm text-[var(--ftf-muted)]">{[farm.village, farm.district, farm.state].filter(Boolean).join(", ")}</p>
-                  {!batches.length ? <p className="mt-5 rounded-xl bg-[var(--ftf-sage)]/45 p-4 text-sm font-bold text-[var(--ftf-muted)]">No batches yet for this farm.</p> : null}
-                  {batches.length ? <div className="mt-5 grid gap-4">{batches.map((batch) => <BatchCard batch={batch} key={batch.batchId} />)}</div> : null}
+                  <p className="mt-1 text-sm text-[var(--ftf-muted)]">
+                    {[farm.village, farm.district, farm.state].filter(Boolean).join(", ")}
+                  </p>
+                  {!batches.length ? (
+                    <p className="mt-5 rounded-xl bg-[var(--ftf-sage)]/45 p-4 text-sm font-bold text-[var(--ftf-muted)]">
+                      No batches yet for this farm.
+                    </p>
+                  ) : null}
+                  {batches.length ? (
+                    <div className="mt-5 grid gap-4">
+                      {batches.map((batch) => (
+                        <BatchCard batch={batch} key={batch.batchId} />
+                      ))}
+                    </div>
+                  ) : null}
                 </Card>
               ))}
             </div>

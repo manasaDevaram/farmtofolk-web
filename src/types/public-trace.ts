@@ -16,13 +16,15 @@ export interface PublicTraceQrCode {
 export interface PublicTraceBatch {
   id: string;
   batchCode: string;
-  farmId: string;
-  farmerId: string;
   cropName: string;
   variety: string;
-  quantity: number;
+  quantityReceived: number;
   unit: string;
   harvestDate: string;
+  receivedDate: string;
+  farmerPricePerUnit: number;
+  consumerPricePerUnit: number;
+  operationalCostPerUnit: number;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -101,18 +103,6 @@ export interface PublicTraceFarmMedia {
 
 export type PublicTraceMedia = PublicTraceFarmMedia | PublicTraceVerificationEvidence;
 
-export interface PublicTracePriceBreakdown {
-  id: string;
-  batchId: string;
-  consumerPrice: number;
-  farmerPrice: number;
-  operationalCost: number;
-  currency: string;
-  priceUnit: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface PublicTraceEvent {
   id: string;
   batchId: string;
@@ -133,7 +123,5 @@ export interface PublicTraceResponse {
   latestVerification: Nullable<PublicTraceVerification>;
   verificationEvidence: PublicTraceVerificationEvidence[];
   farmMedia: PublicTraceFarmMedia[];
-  priceBreakdown: Nullable<PublicTracePriceBreakdown>;
   traceEvents: PublicTraceEvent[];
-  scanCount: number;
 }

@@ -329,7 +329,12 @@ export function BatchForm({
     farmId: initial?.farmId ?? lockedFarmId ?? "",
     farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
     harvestDate: initial?.harvestDate ?? today(),
-    quantity: initial?.quantity ?? 0,
+    receivedDate: initial?.receivedDate ?? today(),
+    quantityReceived: initial?.quantityReceived ?? 0,
+    farmerPricePerUnit: initial?.farmerPricePerUnit ?? 0,
+    paymentStatus: initial?.paymentStatus ?? "UNPAID",
+    consumerPricePerUnit: initial?.consumerPricePerUnit ?? 0,
+    operationalCostPerUnit: initial?.operationalCostPerUnit ?? 0,
     status: initial?.status ?? "HARVESTED",
     unit: initial?.unit ?? "kg",
     variety: initial?.variety ?? "",
@@ -360,19 +365,19 @@ export function BatchForm({
     event.preventDefault();
     setState({});
     if (
-      !form.batchCode ||
       !form.farmerId ||
       !form.farmId ||
       !form.cropName ||
       !form.unit ||
       !form.harvestDate ||
+      !form.receivedDate ||
       !form.status
     ) {
       setState({ error: "Please fill all required batch fields." });
       return;
     }
-    if (!form.quantity || form.quantity <= 0) {
-      setState({ error: "Quantity must be positive." });
+    if (!form.quantityReceived || form.quantityReceived <= 0) {
+      setState({ error: "Quantity received must be positive." });
       return;
     }
     setSaving(true);
@@ -394,7 +399,7 @@ export function BatchForm({
       <Card>
         <h2 className="text-xl font-black">Batch Details</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Batch Code" required>
+          <Field label="Batch Code">
             <div className="flex gap-2">
               <input
                 className={inputClass}
@@ -418,11 +423,13 @@ export function BatchForm({
             onChange={(variety) => setForm({ ...form, variety })}
           />
           <TextField
-            label="Quantity"
+            label="Quantity Received"
             required
             type="number"
-            value={form.quantity}
-            onChange={(quantity) => setForm({ ...form, quantity: toNumber(quantity) ?? 0 })}
+            value={form.quantityReceived}
+            onChange={(quantityReceived) =>
+              setForm({ ...form, quantityReceived: toNumber(quantityReceived) ?? 0 })
+            }
           />
           <TextField
             label="Unit"
@@ -479,7 +486,7 @@ export function BatchForm({
         </div>
       </Card>
       <Card>
-        <h2 className="text-xl font-black">Dates</h2>
+        <h2 className="text-xl font-black">Receiving & Pricing</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <TextField
             label="Harvest Date"
@@ -488,6 +495,54 @@ export function BatchForm({
             value={form.harvestDate}
             onChange={(harvestDate) => setForm({ ...form, harvestDate })}
           />
+          <TextField
+            label="Received Date"
+            required
+            type="date"
+            value={form.receivedDate}
+            onChange={(receivedDate) => setForm({ ...form, receivedDate })}
+          />
+          <TextField
+            label="Farmer Price Per Unit"
+            required
+            type="number"
+            value={form.farmerPricePerUnit}
+            onChange={(farmerPricePerUnit) =>
+              setForm({ ...form, farmerPricePerUnit: toNumber(farmerPricePerUnit) ?? 0 })
+            }
+          />
+          <Field label="Payment Status" required>
+            <select
+              className={inputClass}
+              value={form.paymentStatus}
+              onChange={(event) => setForm({ ...form, paymentStatus: event.target.value })}
+            >
+              <option value="UNPAID">UNPAID</option>
+              <option value="PAID">PAID</option>
+            </select>
+          </Field>
+          <TextField
+            label="Consumer Price Per Unit"
+            required
+            type="number"
+            value={form.consumerPricePerUnit}
+            onChange={(consumerPricePerUnit) =>
+              setForm({ ...form, consumerPricePerUnit: toNumber(consumerPricePerUnit) ?? 0 })
+            }
+          />
+          <TextField
+            label="Operational Cost Per Unit"
+            required
+            type="number"
+            value={form.operationalCostPerUnit}
+            onChange={(operationalCostPerUnit) =>
+              setForm({ ...form, operationalCostPerUnit: toNumber(operationalCostPerUnit) ?? 0 })
+            }
+          />
+          <div className="rounded-2xl bg-stone-50 p-4 text-sm font-bold text-stone-700">
+            Margin per unit:{" "}
+            {form.consumerPricePerUnit - form.farmerPricePerUnit - form.operationalCostPerUnit}
+          </div>
         </div>
       </Card>
       <SubmitBar saving={saving} state={state} />

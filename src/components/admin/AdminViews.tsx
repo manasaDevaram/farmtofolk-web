@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SignedMedia } from "@/components/SignedMedia";
 import {
   batchApi,
+  batchUsageApi,
   dashboardApi,
   evidenceApi,
   farmApi,
@@ -15,7 +16,6 @@ import {
   listAllBatches,
   listAllFarms,
   mediaApi,
-  priceApi,
   qrApi,
   traceEventApi,
   verificationApi,
@@ -23,15 +23,16 @@ import {
 import type {
   Batch,
   BatchPayload,
+  BatchUsage,
+  BatchUsageType,
   BatchWithRelations,
-  DashboardSummary,
+  AdminDashboardResponse,
+  CreateBatchUsagePayload,
   Farm,
   Farmer,
   FarmMedia,
   FarmVerification,
   FarmWithFarmer,
-  PriceBreakdown,
-  PriceBreakdownPayload,
   QrCode,
   TraceEvent,
   TraceEventPayload,
@@ -66,7 +67,8 @@ const isImageFile = (type?: string | null, url?: string | null) =>
 
 // AdminHomeView is the operator entry point for the complete data flow.
 export function AdminHomeView() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summary, setSummary] = useState<AdminDashboardResponse | null>(null);
+  const [highWastage, setHighWastage] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -74,7 +76,12 @@ export function AdminHomeView() {
     setLoading(true);
     setError("");
     try {
-      setSummary(await dashboardApi.summary());
+      const [nextSummary, nextHighWastage] = await Promise.all([
+        dashboardApi.summary(),
+        dashboardApi.highWastageBatches(),
+      ]);
+      setSummary(nextSummary);
+      setHighWastage(nextHighWastage);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load the dashboard.");
     } finally {
@@ -106,117 +113,114 @@ export function AdminHomeView() {
       />
       {loading ? <LoadingState label="Gathering today's farm records..." /> : null}
       {error ? <ErrorState message={error} onRetry={load} /> : null}
-      {summary ? <DashboardSummaryView summary={summary} /> : null}
+      {summary ? <DashboardSummaryView highWastage={highWastage} summary={summary} /> : null}
     </AdminShell>
   );
 }
 
-function DashboardSummaryView({ summary }: { summary: DashboardSummary }) {
+function DashboardSummaryView({
+  highWastage,
+  summary,
+}: {
+  highWastage: Batch[];
+  summary: AdminDashboardResponse;
+}) {
   const money = new Intl.NumberFormat("en-IN", {
     currency: "INR",
     maximumFractionDigits: 0,
     style: "currency",
   });
-  const recentVerificationCount = summary.recentVerifications.length;
-
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard
-          href="/admin/farmers"
-          label="Total farmers"
-          note={`${summary.activeFarmers} active`}
-          tone="green"
-          value={summary.totalFarmers}
-        />
-        <MetricCard
-          href="/admin/farms"
-          label="Total farms"
-          note="Registered holdings"
-          tone="kraft"
-          value={summary.totalFarms}
-        />
-        <MetricCard
-          href="/admin/batches"
-          label="Total batches"
-          note="Traceable produce lots"
-          tone="green"
-          value={summary.totalBatches}
-        />
-        <MetricCard
-          label="Pending payments"
-          note={`${summary.pendingPaymentBatchCount} batches`}
+          label="Pending Farmer Payments"
+          note={`${summary.payments.pendingCount} batches`}
           tone="clay"
-          value={money.format(summary.pendingPaymentsAmount || 0)}
+          value={money.format(summary.payments.pendingAmount || 0)}
+        />
+        <MetricCard
+          label="Pending Verifications"
+          note="Needs review"
+          tone="kraft"
+          value={summary.verifications.pendingCount}
+        />
+        <MetricCard
+          label="Upcoming Verifications"
+          note="Scheduled"
+          tone="green"
+          value={summary.verifications.upcomingCount}
         />
       </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          label="Batch Inventory"
+          note="Available"
+          tone="green"
+          value={summary.inventory.totalAvailableQuantity}
+        />
+        <MetricCard
+          label="Total Sold"
+          note="Across all batches"
+          tone="kraft"
+          value={summary.inventory.totalSoldQuantity}
+        />
+        <MetricCard
+          label="Total Wastage"
+          note="Across all batches"
+          tone="clay"
+          value={summary.inventory.totalWastedQuantity}
+        />
+      </div>
+      <div className="mt-4">
         <Card>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-green-700)]">
-                Field activity
-              </p>
-              <h2 className="mt-1 text-2xl font-bold">Recent verifications</h2>
-            </div>
-            <span className="ftf-stamp">{recentVerificationCount} recent</span>
-          </div>
+          <h2 className="text-2xl font-bold">High Wastage Batches</h2>
           <div className="mt-5 divide-y divide-[var(--ftf-border)]">
-            {summary.recentVerifications.length ? (
-              summary.recentVerifications.map((verification) => (
-                <div className="flex items-center justify-between gap-4 py-3" key={verification.id}>
-                  <div>
-                    <p className="font-bold">
-                      {verification.verificationType || "Farm verification"}
-                    </p>
-                    <p className="mt-0.5 text-sm text-[var(--ftf-muted)]">
-                      {verification.verificationDate}
-                    </p>
-                  </div>
-                  <span className="ftf-stamp">{verification.status || "Recorded"}</span>
-                </div>
+            {highWastage.length ? (
+              highWastage.map((batch) => (
+                <Link
+                  className="flex items-center justify-between gap-4 py-3"
+                  href={`/admin/batches/${batch.id}`}
+                  key={batch.id}
+                >
+                  <span className="font-bold">
+                    {batch.batchCode} · {batch.cropName}
+                  </span>
+                  <span className="ftf-stamp">
+                    {batch.quantityWasted} {batch.unit} wasted
+                  </span>
+                </Link>
               ))
             ) : (
-              <p className="py-8 text-center text-sm text-[var(--ftf-muted)]">
-                No recent verification activity.
+              <p className="py-6 text-center text-sm text-[var(--ftf-muted)]">
+                No wastage recorded.
               </p>
             )}
           </div>
         </Card>
-
-        <Card className="ftf-kraft-card">
-          <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-soil)]">
-            Traceability reach
-          </p>
-          <div className="mt-3 flex items-end justify-between gap-4">
-            <div>
-              <p className="ftf-display text-5xl font-bold text-[var(--ftf-green-900)]">
-                {summary.totalQrCodes}
-              </p>
-              <p className="mt-1 font-bold text-[var(--ftf-soil)]">QR codes generated</p>
-            </div>
-            <div
-              className="grid h-20 w-20 grid-cols-4 gap-1 rounded-xl border border-[var(--ftf-soil)]/20 bg-white/40 p-2"
-              aria-hidden="true"
-            >
-              {Array.from({ length: 16 }, (_, index) => (
-                <span
-                  className={
-                    index % 3 === 0 || index === 6 || index === 11
-                      ? "bg-[var(--ftf-green-900)]"
-                      : "bg-transparent"
-                  }
-                  key={index}
-                />
-              ))}
-            </div>
-          </div>
-          <p className="mt-6 text-sm leading-6 text-[var(--ftf-soil)]/75">
-            Each code gives customers a direct path to the farmer, farm, verification evidence, and
-            batch journey.
-          </p>
-        </Card>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          href="/admin/farmers"
+          label="Farmers"
+          note="Profiles"
+          tone="green"
+          value={summary.secondaryCounts.farmers}
+        />
+        <MetricCard
+          href="/admin/farms"
+          label="Farms"
+          note="Registered holdings"
+          tone="kraft"
+          value={summary.secondaryCounts.farms}
+        />
+        <MetricCard
+          href="/admin/batches"
+          label="Batches"
+          note="Received crop lots"
+          tone="green"
+          value={summary.secondaryCounts.batches}
+        />
       </div>
     </>
   );
@@ -1302,7 +1306,8 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
               <div>
                 <h2 className="text-xl font-black">{batch.batchCode}</h2>
                 <p className="font-bold text-stone-600">
-                  {batch.cropName} - {batch.variety || "No variety"} - {batch.quantity} {batch.unit}
+                  {batch.cropName} - {batch.variety || "No variety"} - {batch.quantityReceived}{" "}
+                  {batch.unit} received
                 </p>
                 <p className="text-sm text-stone-500">
                   {batch.farmer?.name || batch.farmerName || "Unknown farmer"} /{" "}
@@ -1379,13 +1384,13 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
   );
 }
 
-// BatchDetailView manages timeline, price breakdown, and QR generation for a batch.
+// BatchDetailView manages inventory usage, timeline, and QR generation for a batch.
 export function BatchDetailView({ batchId }: { batchId: string }) {
   const [batch, setBatch] = useState<Batch | null>(null);
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [farm, setFarm] = useState<Farm | null>(null);
   const [farmer, setFarmer] = useState<Farmer | null>(null);
-  const [price, setPrice] = useState<PriceBreakdown | null>(null);
+  const [usage, setUsage] = useState<BatchUsage[]>([]);
   const [qr, setQr] = useState<QrCode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1394,10 +1399,10 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
     setLoading(true);
     setError("");
     try {
-      const [nextBatch, nextEvents, nextPrice, nextQr] = await Promise.all([
+      const [nextBatch, nextEvents, nextUsage, nextQr] = await Promise.all([
         batchApi.get(batchId),
         traceEventApi.list(batchId),
-        priceApi.get(batchId),
+        batchUsageApi.list(batchId),
         qrApi.get(batchId),
       ]);
       const [nextFarmer, nextFarm] = await Promise.all([
@@ -1408,7 +1413,7 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
       setEvents(nextEvents);
       setFarm(nextFarm);
       setFarmer(nextFarmer);
-      setPrice(nextPrice);
+      setUsage(nextUsage);
       setQr(nextQr);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load batch.");
@@ -1438,15 +1443,32 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
                 { label: "Farmer", value: farmer?.name },
                 { label: "Farm", value: farm?.farmName },
                 { label: "Variety", value: batch.variety },
-                { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
+                { label: "Received", value: `${batch.quantityReceived} ${batch.unit}` },
+                { label: "Sold", value: `${batch.quantitySold} ${batch.unit}` },
+                { label: "Used in product", value: `${batch.quantityUsedInProduct} ${batch.unit}` },
+                { label: "Wasted", value: `${batch.quantityWasted} ${batch.unit}` },
+                { label: "Available", value: `${batch.quantityAvailable} ${batch.unit}` },
                 { label: "Harvest Date", value: batch.harvestDate },
+                { label: "Received Date", value: batch.receivedDate },
+                { label: "Farmer Price / Unit", value: batch.farmerPricePerUnit },
+                { label: "Total Farmer Amount", value: batch.totalFarmerAmount },
+                { label: "Payment Status", value: batch.paymentStatus },
+                { label: "Consumer Price / Unit", value: batch.consumerPricePerUnit },
+                { label: "Operational Cost / Unit", value: batch.operationalCostPerUnit },
+                {
+                  label: "Margin / Unit",
+                  value:
+                    batch.consumerPricePerUnit -
+                    batch.farmerPricePerUnit -
+                    batch.operationalCostPerUnit,
+                },
                 { label: "Status", value: batch.status },
               ]}
             />
           </Card>
           <div className="mt-4 grid gap-4 xl:grid-cols-3">
             <TraceEventPanel batchId={batch.id} events={events} onSaved={load} />
-            <PricePanel batchId={batch.id} price={price} onSaved={load} />
+            <BatchUsagePanel batch={batch} onSaved={load} usage={usage} />
             <QrPanel batchId={batch.id} qr={qr} onSaved={load} />
           </div>
         </>
@@ -1550,74 +1572,178 @@ function TraceEventPanel({
   );
 }
 
-function PricePanel({
-  batchId,
+const batchUsageLabels: Record<BatchUsageType, string> = {
+  SOLD_ONLINE: "Sold Online",
+  SOLD_OFFLINE: "Sold Offline",
+  CAFE: "Cafe",
+  EXPERIENCE_CENTRE: "Experience Centre",
+  USED_IN_PRODUCT: "Used in Product",
+  WASTED: "Wasted",
+};
+
+const saleUsageTypes: BatchUsageType[] = [
+  "SOLD_ONLINE",
+  "SOLD_OFFLINE",
+  "CAFE",
+  "EXPERIENCE_CENTRE",
+];
+
+function BatchUsagePanel({
+  batch,
   onSaved,
-  price,
+  usage,
 }: {
-  batchId: string;
+  batch: Batch;
   onSaved: () => void;
-  price: PriceBreakdown | null;
+  usage: BatchUsage[];
 }) {
-  const [form, setForm] = useState<PriceBreakdownPayload>({
-    consumerPrice: 0,
-    farmerPrice: 0,
-    operationalCost: 0,
-    currency: "INR",
-    priceUnit: "kg",
+  const [form, setForm] = useState<CreateBatchUsagePayload>({
+    usageType: "SOLD_ONLINE",
+    quantity: 0,
+    pricePerUnit: null,
+    customerName: "",
+    customerType: "",
+    reason: "",
+    notes: "",
+    recordedAt: nowLocal(),
   });
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (price) {
-      setForm({
-        consumerPrice: price.consumerPrice,
-        farmerPrice: price.farmerPrice,
-        operationalCost: price.operationalCost,
-        currency: price.currency,
-        priceUnit: price.priceUnit,
-      });
-    }
-  }, [price]);
+  const [error, setError] = useState("");
+  const requiresPrice = saleUsageTypes.includes(form.usageType);
 
   async function save() {
+    setError("");
+    if (form.quantity <= 0) return setError("Quantity must be positive.");
+    if (requiresPrice && (form.pricePerUnit == null || form.pricePerUnit < 0)) {
+      return setError("Price per unit is required for sale usage.");
+    }
     setSaving(true);
-    const action = price ? priceApi.update : priceApi.create;
-    await action(batchId, form).finally(() => setSaving(false));
-    onSaved();
+    try {
+      await batchUsageApi.create(batch.id, {
+        ...form,
+        pricePerUnit: requiresPrice ? form.pricePerUnit : null,
+        customerName: form.customerName || null,
+        customerType: form.customerType || null,
+        reason: form.reason || null,
+        notes: form.notes || null,
+        recordedAt: form.recordedAt || null,
+      });
+      onSaved();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not record usage.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function convertAvailableToWaste() {
+    if (batch.quantityAvailable <= 0) return;
+    setSaving(true);
+    try {
+      await batchUsageApi.waste(batch.id, {
+        quantity: batch.quantityAvailable,
+        reason: form.reason || "Converted remaining available inventory to wastage",
+        notes: form.notes || null,
+        recordedAt: form.recordedAt || null,
+      });
+      onSaved();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not record wastage.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Card>
-      <h2 className="text-xl font-black">Price Breakdown</h2>
+      <h2 className="text-xl font-black">Record Usage</h2>
       <div className="mt-3 grid gap-2">
-        {(["farmerPrice", "operationalCost", "consumerPrice"] as const).map((key) => (
+        <select
+          className={inputClass}
+          value={form.usageType}
+          onChange={(event) =>
+            setForm({ ...form, usageType: event.target.value as BatchUsageType })
+          }
+        >
+          {(Object.keys(batchUsageLabels) as BatchUsageType[]).map((type) => (
+            <option key={type} value={type}>
+              {batchUsageLabels[type]}
+            </option>
+          ))}
+        </select>
+        <input
+          className={inputClass}
+          min={0}
+          placeholder={`Quantity (${batch.unit})`}
+          type="number"
+          value={form.quantity || ""}
+          onChange={(event) => setForm({ ...form, quantity: Number(event.target.value) })}
+        />
+        {requiresPrice ? (
           <input
             className={inputClass}
-            key={key}
             min={0}
-            placeholder={key}
+            placeholder="Price per unit"
             type="number"
-            value={form[key] ?? 0}
-            onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })}
+            value={form.pricePerUnit ?? ""}
+            onChange={(event) => setForm({ ...form, pricePerUnit: Number(event.target.value) })}
           />
-        ))}
-        <p className="rounded-xl bg-stone-50 p-3 text-sm font-bold text-stone-700">
-          Margin: {form.consumerPrice - form.farmerPrice - form.operationalCost}
-        </p>
+        ) : null}
+        {form.usageType === "WASTED" ? (
+          <input
+            className={inputClass}
+            placeholder="Reason"
+            value={form.reason ?? ""}
+            onChange={(event) => setForm({ ...form, reason: event.target.value })}
+          />
+        ) : null}
         <input
           className={inputClass}
-          value={form.currency}
-          onChange={(event) => setForm({ ...form, currency: event.target.value })}
+          placeholder="Customer name (optional)"
+          value={form.customerName ?? ""}
+          onChange={(event) => setForm({ ...form, customerName: event.target.value })}
         />
         <input
           className={inputClass}
-          value={form.priceUnit}
-          onChange={(event) => setForm({ ...form, priceUnit: event.target.value })}
+          placeholder="Customer type (optional)"
+          value={form.customerType ?? ""}
+          onChange={(event) => setForm({ ...form, customerType: event.target.value })}
         />
+        <textarea
+          className={`${inputClass} min-h-20`}
+          placeholder="Notes"
+          value={form.notes ?? ""}
+          onChange={(event) => setForm({ ...form, notes: event.target.value })}
+        />
+        <input
+          className={inputClass}
+          type="datetime-local"
+          value={form.recordedAt ?? ""}
+          onChange={(event) => setForm({ ...form, recordedAt: event.target.value })}
+        />
+        {error ? <p className="text-sm font-bold text-red-700">{error}</p> : null}
         <Button disabled={saving} onClick={() => void save()}>
-          {saving ? "Saving..." : price ? "Update Price" : "Add Price"}
+          {saving ? "Saving..." : "Record Usage"}
         </Button>
+        <Button
+          disabled={saving || batch.quantityAvailable <= 0}
+          onClick={() => void convertAvailableToWaste()}
+          variant="danger"
+        >
+          Convert available to wastage
+        </Button>
+      </div>
+      <div className="mt-5 space-y-2">
+        {usage.map((item) => (
+          <div className="rounded-xl bg-stone-50 p-3 text-sm" key={item.id}>
+            <p className="font-black">{batchUsageLabels[item.usageType]}</p>
+            <p>
+              {item.quantity} {batch.unit}
+              {item.pricePerUnit != null ? ` @ ${item.pricePerUnit}` : ""}
+            </p>
+            {item.reason ? <p className="text-stone-600">{item.reason}</p> : null}
+          </div>
+        ))}
       </div>
     </Card>
   );
