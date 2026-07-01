@@ -10,6 +10,22 @@ type SubmitState = { error?: string; success?: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+type FarmFormState = Omit<FarmPayload, "latitude" | "longitude" | "sizeAcres"> & {
+  latitude: string;
+  longitude: string;
+  sizeAcres: string;
+};
+
+type BatchFormState = Omit<
+  BatchPayload,
+  "quantityReceived" | "farmerPricePerUnit" | "consumerPricePerUnit" | "operationalCostPerUnit"
+> & {
+  quantityReceived: string;
+  farmerPricePerUnit: string;
+  consumerPricePerUnit: string;
+  operationalCostPerUnit: string;
+};
+
 // FarmerForm validates the required profile fields before calling the backend.
 export function FarmerForm({
   initial,
@@ -153,15 +169,15 @@ export function FarmForm({
 }) {
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<SubmitState>({});
-  const [form, setForm] = useState<FarmPayload>({
+  const [form, setForm] = useState<FarmFormState>({
     farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
     farmName: initial?.farmName ?? "",
     village: initial?.village ?? "",
     district: initial?.district ?? "",
     state: initial?.state ?? "",
-    latitude: initial?.latitude ?? null,
-    longitude: initial?.longitude ?? null,
-    sizeAcres: initial?.sizeAcres ?? null,
+    latitude: initial?.latitude == null ? "" : String(initial.latitude),
+    longitude: initial?.longitude == null ? "" : String(initial.longitude),
+    sizeAcres: initial?.sizeAcres == null ? "" : String(initial.sizeAcres),
     farmingType: initial?.farmingType ?? "NATURAL_FARMING",
   });
   const locked = Boolean(lockedFarmerId) && form.farmerId === lockedFarmerId;
@@ -175,8 +191,8 @@ export function FarmForm({
       (position) =>
         setForm({
           ...form,
-          latitude: Number(position.coords.latitude.toFixed(6)),
-          longitude: Number(position.coords.longitude.toFixed(6)),
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
         }),
       () => setState({ error: "Could not read current location." }),
     );
@@ -196,13 +212,19 @@ export function FarmForm({
       setState({ error: "Please fill all required farm fields." });
       return;
     }
-    if (form.sizeAcres == null || form.sizeAcres <= 0) {
+    const sizeAcres = Number(form.sizeAcres);
+    if (!Number.isFinite(sizeAcres) || sizeAcres <= 0) {
       setState({ error: "Farm size must be a positive number." });
       return;
     }
     setSaving(true);
     try {
-      await onSubmit(form);
+      await onSubmit({
+        ...form,
+        latitude: optionalNumber(form.latitude),
+        longitude: optionalNumber(form.longitude),
+        sizeAcres,
+      });
       setState({ success: "Farm saved successfully." });
     } catch (error) {
       setState({ error: error instanceof Error ? error.message : "Save failed." });
@@ -255,8 +277,9 @@ export function FarmForm({
             label="Size Acres"
             required
             type="number"
-            value={form.sizeAcres ?? ""}
-            onChange={(sizeAcres) => setForm({ ...form, sizeAcres: toNumber(sizeAcres) })}
+            placeholder="Size Acres"
+            value={form.sizeAcres}
+            onChange={(sizeAcres) => setForm({ ...form, sizeAcres })}
           />
         </div>
       </Card>
@@ -289,14 +312,16 @@ export function FarmForm({
           <TextField
             label="Latitude"
             type="number"
-            value={form.latitude ?? ""}
-            onChange={(latitude) => setForm({ ...form, latitude: toNumber(latitude) })}
+            placeholder="Latitude"
+            value={form.latitude}
+            onChange={(latitude) => setForm({ ...form, latitude })}
           />
           <TextField
             label="Longitude"
             type="number"
-            value={form.longitude ?? ""}
-            onChange={(longitude) => setForm({ ...form, longitude: toNumber(longitude) })}
+            placeholder="Longitude"
+            value={form.longitude}
+            onChange={(longitude) => setForm({ ...form, longitude })}
           />
         </div>
       </Card>
@@ -323,18 +348,21 @@ export function BatchForm({
 }) {
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<SubmitState>({});
-  const [form, setForm] = useState<BatchPayload>({
+  const [form, setForm] = useState<BatchFormState>({
     batchCode: initial?.batchCode ?? "",
     cropName: initial?.cropName ?? "",
     farmId: initial?.farmId ?? lockedFarmId ?? "",
     farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
     harvestDate: initial?.harvestDate ?? today(),
     receivedDate: initial?.receivedDate ?? today(),
-    quantityReceived: initial?.quantityReceived ?? 0,
-    farmerPricePerUnit: initial?.farmerPricePerUnit ?? 0,
+    quantityReceived: initial?.quantityReceived == null ? "" : String(initial.quantityReceived),
+    farmerPricePerUnit:
+      initial?.farmerPricePerUnit == null ? "" : String(initial.farmerPricePerUnit),
     paymentStatus: initial?.paymentStatus ?? "UNPAID",
-    consumerPricePerUnit: initial?.consumerPricePerUnit ?? 0,
-    operationalCostPerUnit: initial?.operationalCostPerUnit ?? 0,
+    consumerPricePerUnit:
+      initial?.consumerPricePerUnit == null ? "" : String(initial.consumerPricePerUnit),
+    operationalCostPerUnit:
+      initial?.operationalCostPerUnit == null ? "" : String(initial.operationalCostPerUnit),
     status: initial?.status ?? "HARVESTED",
     unit: initial?.unit ?? "kg",
     variety: initial?.variety ?? "",
@@ -376,14 +404,34 @@ export function BatchForm({
       setState({ error: "Please fill all required batch fields." });
       return;
     }
-    if (!form.quantityReceived || form.quantityReceived <= 0) {
+    const quantityReceived = Number(form.quantityReceived);
+    const farmerPricePerUnit = Number(form.farmerPricePerUnit);
+    const consumerPricePerUnit = Number(form.consumerPricePerUnit);
+    const operationalCostPerUnit = Number(form.operationalCostPerUnit);
+    if (!Number.isFinite(quantityReceived) || quantityReceived <= 0) {
       setState({ error: "Quantity received must be positive." });
+      return;
+    }
+    if (!form.farmerPricePerUnit.trim() || !isNonNegative(farmerPricePerUnit)) {
+      setState({ error: "Farmer price per unit cannot be negative." });
+      return;
+    }
+    if (!form.consumerPricePerUnit.trim() || !isNonNegative(consumerPricePerUnit)) {
+      setState({ error: "Consumer price per unit cannot be negative." });
+      return;
+    }
+    if (!form.operationalCostPerUnit.trim() || !isNonNegative(operationalCostPerUnit)) {
+      setState({ error: "Operational cost per unit cannot be negative." });
       return;
     }
     setSaving(true);
     try {
       await onSubmit({
         ...form,
+        quantityReceived,
+        farmerPricePerUnit,
+        consumerPricePerUnit,
+        operationalCostPerUnit,
         variety: form.variety || null,
       });
       setState({ success: "Batch saved successfully." });
@@ -426,10 +474,9 @@ export function BatchForm({
             label="Quantity Received"
             required
             type="number"
+            placeholder="Quantity Received"
             value={form.quantityReceived}
-            onChange={(quantityReceived) =>
-              setForm({ ...form, quantityReceived: toNumber(quantityReceived) ?? 0 })
-            }
+            onChange={(quantityReceived) => setForm({ ...form, quantityReceived })}
           />
           <TextField
             label="Unit"
@@ -506,10 +553,9 @@ export function BatchForm({
             label="Farmer Price Per Unit"
             required
             type="number"
+            placeholder="Farmer Price Per Unit"
             value={form.farmerPricePerUnit}
-            onChange={(farmerPricePerUnit) =>
-              setForm({ ...form, farmerPricePerUnit: toNumber(farmerPricePerUnit) ?? 0 })
-            }
+            onChange={(farmerPricePerUnit) => setForm({ ...form, farmerPricePerUnit })}
           />
           <Field label="Payment Status" required>
             <select
@@ -525,23 +571,20 @@ export function BatchForm({
             label="Consumer Price Per Unit"
             required
             type="number"
+            placeholder="Consumer Price Per Unit"
             value={form.consumerPricePerUnit}
-            onChange={(consumerPricePerUnit) =>
-              setForm({ ...form, consumerPricePerUnit: toNumber(consumerPricePerUnit) ?? 0 })
-            }
+            onChange={(consumerPricePerUnit) => setForm({ ...form, consumerPricePerUnit })}
           />
           <TextField
             label="Operational Cost Per Unit"
             required
             type="number"
+            placeholder="Operational Cost Per Unit"
             value={form.operationalCostPerUnit}
-            onChange={(operationalCostPerUnit) =>
-              setForm({ ...form, operationalCostPerUnit: toNumber(operationalCostPerUnit) ?? 0 })
-            }
+            onChange={(operationalCostPerUnit) => setForm({ ...form, operationalCostPerUnit })}
           />
           <div className="rounded-2xl bg-stone-50 p-4 text-sm font-bold text-stone-700">
-            Margin per unit:{" "}
-            {form.consumerPricePerUnit - form.farmerPricePerUnit - form.operationalCostPerUnit}
+            Margin per unit: {formatMargin(form)}
           </div>
         </div>
       </Card>
@@ -568,6 +611,7 @@ function TextField({
   help,
   label,
   onChange,
+  placeholder,
   required,
   type = "text",
   value,
@@ -575,6 +619,7 @@ function TextField({
   help?: string;
   label: string;
   onChange: (value: string) => void;
+  placeholder?: string;
   required?: boolean;
   type?: string;
   value: string | number;
@@ -583,6 +628,7 @@ function TextField({
     <Field help={help} label={label} required={required}>
       <input
         className={inputClass}
+        placeholder={placeholder}
         required={required}
         type={type}
         value={value}
@@ -592,8 +638,28 @@ function TextField({
   );
 }
 
-function toNumber(value: string): number | null {
-  if (value === "") return null;
+function optionalNumber(value: string): number | null {
+  if (!value.trim()) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function isNonNegative(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function formatMargin(form: BatchFormState): string {
+  if (
+    !form.consumerPricePerUnit.trim() ||
+    !form.farmerPricePerUnit.trim() ||
+    !form.operationalCostPerUnit.trim()
+  ) {
+    return "Enter pricing values";
+  }
+  const consumer = Number(form.consumerPricePerUnit);
+  const farmer = Number(form.farmerPricePerUnit);
+  const operational = Number(form.operationalCostPerUnit);
+  return [consumer, farmer, operational].every(Number.isFinite)
+    ? String(consumer - farmer - operational)
+    : "Enter valid pricing values";
 }

@@ -25,7 +25,7 @@ export type InternalUserResponse = {
   name: string;
   email: Nullable<string>;
   phone: Nullable<string>;
-  role: InternalUserRole;
+  role: UserRole;
   active: boolean;
 };
 
@@ -288,3 +288,17 @@ export type BatchWithRelations = Batch & {
 };
 export type FarmListItem = Farm & { farmerName?: string };
 export type BatchListItem = Batch & { farmerName?: string; farmName?: string };
+
+export type DashboardVerificationItem = FarmVerification & {
+  farmName?: string;
+  farmerName?: string;
+  farmVillage?: string;
+  village?: string;
+  district?: string;
+  state?: string;
+  location?: string;
+  officerName?: string;
+  assignedOfficerName?: string;
+  verifiedByUserName?: string;
+  scheduledDate?: Nullable<string>;
+};

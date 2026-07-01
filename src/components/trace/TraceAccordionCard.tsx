@@ -22,11 +22,11 @@ export function TraceAccordionCard({
   const contentId = useId();
 
   return (
-    <section className="rounded-[1.75rem] border border-stone-200/80 bg-white shadow-[0_12px_35px_rgba(50,45,34,0.08)]">
+    <section className="rounded-2xl border border-[var(--ftf-border)] bg-[var(--ftf-paper-light)] shadow-[0_10px_28px_rgba(65,49,29,0.08)]">
       <button
         aria-controls={contentId}
         aria-expanded={isOpen}
-        className="flex w-full cursor-pointer items-center gap-4 rounded-[1.75rem] p-4 text-left outline-none transition hover:bg-emerald-50/40 focus-visible:ring-4 focus-visible:ring-emerald-200 sm:gap-6 sm:p-6"
+        className="ftf-focus flex w-full cursor-pointer items-center gap-4 rounded-2xl p-4 text-left outline-none transition hover:bg-[var(--ftf-sage)]/35 sm:gap-6 sm:p-6"
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
@@ -36,8 +36,12 @@ export function TraceAccordionCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-black tracking-tight text-stone-950 sm:text-2xl">{title}</h2>
-          <div className="mt-1 text-sm leading-6 text-stone-700 sm:text-base">{summary}</div>
+          <h2 className="text-xl font-bold tracking-tight text-[var(--ftf-text)] sm:text-2xl">
+            {title}
+          </h2>
+          <div className="mt-1 text-sm leading-6 text-[var(--ftf-muted)] sm:text-base">
+            {summary}
+          </div>
           {children}
         </div>
         <ChevronIcon
@@ -45,7 +49,10 @@ export function TraceAccordionCard({
         />
       </button>
       {isOpen ? (
-        <div className="border-t border-stone-100 px-4 pb-5 pt-4 sm:px-6 sm:pb-6" id={contentId}>
+        <div
+          className="border-t border-[var(--ftf-border)] px-4 pb-5 pt-4 sm:px-6 sm:pb-6"
+          id={contentId}
+        >
           {openContent}
         </div>
       ) : null}

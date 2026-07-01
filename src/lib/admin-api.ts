@@ -23,6 +23,7 @@ import type {
   BatchListItem,
   CreateInternalUserRequest,
   AdminDashboardResponse,
+  DashboardVerificationItem,
   FarmerDashboardSummaryResponse,
   InternalUserResponse,
   LoginResponse,
@@ -147,12 +148,12 @@ export const dashboardApi = {
     request<AdminDashboardResponse>("/api/admin/dashboard", {
       cache: "no-store",
     }),
-  pendingPayments: () => request<Batch[]>("/api/admin/dashboard/pending-payments"),
+  pendingPayments: () => request<BatchListItem[]>("/api/admin/dashboard/pending-payments"),
   pendingVerifications: () =>
-    request<FarmVerification[]>("/api/admin/dashboard/pending-verifications"),
+    request<DashboardVerificationItem[]>("/api/admin/dashboard/pending-verifications"),
   upcomingVerifications: () =>
-    request<FarmVerification[]>("/api/admin/dashboard/upcoming-verifications"),
-  batchInventory: () => request<Batch[]>("/api/admin/dashboard/batch-inventory"),
+    request<DashboardVerificationItem[]>("/api/admin/dashboard/upcoming-verifications"),
+  batchInventory: () => request<BatchListItem[]>("/api/admin/dashboard/batch-inventory"),
   highWastageBatches: () => request<Batch[]>("/api/admin/dashboard/high-wastage-batches"),
 };
 

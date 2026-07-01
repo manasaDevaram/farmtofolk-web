@@ -42,6 +42,7 @@ import type {
 import { cleanMediaUrl } from "@/lib/media-url";
 import { getTraceEventTypes } from "@/lib/trace-event-types";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
+import { DashboardSummaryView } from "./AdminDashboardCards";
 import {
   AdminShell,
   Button,
@@ -115,150 +116,6 @@ export function AdminHomeView() {
       {error ? <ErrorState message={error} onRetry={load} /> : null}
       {summary ? <DashboardSummaryView highWastage={highWastage} summary={summary} /> : null}
     </AdminShell>
-  );
-}
-
-function DashboardSummaryView({
-  highWastage,
-  summary,
-}: {
-  highWastage: Batch[];
-  summary: AdminDashboardResponse;
-}) {
-  const money = new Intl.NumberFormat("en-IN", {
-    currency: "INR",
-    maximumFractionDigits: 0,
-    style: "currency",
-  });
-  return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <MetricCard
-          label="Pending Farmer Payments"
-          note={`${summary.payments.pendingCount} batches`}
-          tone="clay"
-          value={money.format(summary.payments.pendingAmount || 0)}
-        />
-        <MetricCard
-          label="Pending Verifications"
-          note="Needs review"
-          tone="kraft"
-          value={summary.verifications.pendingCount}
-        />
-        <MetricCard
-          label="Upcoming Verifications"
-          note="Scheduled"
-          tone="green"
-          value={summary.verifications.upcomingCount}
-        />
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <MetricCard
-          label="Batch Inventory"
-          note="Available"
-          tone="green"
-          value={summary.inventory.totalAvailableQuantity}
-        />
-        <MetricCard
-          label="Total Sold"
-          note="Across all batches"
-          tone="kraft"
-          value={summary.inventory.totalSoldQuantity}
-        />
-        <MetricCard
-          label="Total Wastage"
-          note="Across all batches"
-          tone="clay"
-          value={summary.inventory.totalWastedQuantity}
-        />
-      </div>
-      <div className="mt-4">
-        <Card>
-          <h2 className="text-2xl font-bold">High Wastage Batches</h2>
-          <div className="mt-5 divide-y divide-[var(--ftf-border)]">
-            {highWastage.length ? (
-              highWastage.map((batch) => (
-                <Link
-                  className="flex items-center justify-between gap-4 py-3"
-                  href={`/admin/batches/${batch.id}`}
-                  key={batch.id}
-                >
-                  <span className="font-bold">
-                    {batch.batchCode} · {batch.cropName}
-                  </span>
-                  <span className="ftf-stamp">
-                    {batch.quantityWasted} {batch.unit} wasted
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <p className="py-6 text-center text-sm text-[var(--ftf-muted)]">
-                No wastage recorded.
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <MetricCard
-          href="/admin/farmers"
-          label="Farmers"
-          note="Profiles"
-          tone="green"
-          value={summary.secondaryCounts.farmers}
-        />
-        <MetricCard
-          href="/admin/farms"
-          label="Farms"
-          note="Registered holdings"
-          tone="kraft"
-          value={summary.secondaryCounts.farms}
-        />
-        <MetricCard
-          href="/admin/batches"
-          label="Batches"
-          note="Received crop lots"
-          tone="green"
-          value={summary.secondaryCounts.batches}
-        />
-      </div>
-    </>
-  );
-}
-
-function MetricCard({
-  href,
-  label,
-  note,
-  tone,
-  value,
-}: {
-  href?: string;
-  label: string;
-  note: string;
-  tone: "green" | "kraft" | "clay";
-  value: number | string;
-}) {
-  const content = (
-    <>
-      <div className={`ftf-watercolor-icon ftf-tone-${tone}`}>
-        <span className="ftf-display text-xl font-bold">{label.slice(0, 1)}</span>
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold leading-none sm:text-3xl">{value}</p>
-        <p className="mt-2 text-sm font-bold">{label}</p>
-        <p className="mt-0.5 text-xs text-[var(--ftf-muted)]">{note}</p>
-      </div>
-    </>
-  );
-  const className =
-    "ftf-card flex min-h-32 items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-[0_15px_35px_rgba(59,45,25,.12)]";
-  return href ? (
-    <Link className={className} href={href}>
-      {content}
-    </Link>
-  ) : (
-    <section className={className}>{content}</section>
   );
 }
 
@@ -1588,6 +1445,11 @@ const saleUsageTypes: BatchUsageType[] = [
   "EXPERIENCE_CENTRE",
 ];
 
+type BatchUsageFormState = Omit<CreateBatchUsagePayload, "quantity" | "pricePerUnit"> & {
+  quantity: string;
+  pricePerUnit: string;
+};
+
 function BatchUsagePanel({
   batch,
   onSaved,
@@ -1597,10 +1459,10 @@ function BatchUsagePanel({
   onSaved: () => void;
   usage: BatchUsage[];
 }) {
-  const [form, setForm] = useState<CreateBatchUsagePayload>({
+  const [form, setForm] = useState<BatchUsageFormState>({
     usageType: "SOLD_ONLINE",
-    quantity: 0,
-    pricePerUnit: null,
+    quantity: "",
+    pricePerUnit: "",
     customerName: "",
     customerType: "",
     reason: "",
@@ -1613,15 +1475,23 @@ function BatchUsagePanel({
 
   async function save() {
     setError("");
-    if (form.quantity <= 0) return setError("Quantity must be positive.");
-    if (requiresPrice && (form.pricePerUnit == null || form.pricePerUnit < 0)) {
+    const quantity = Number(form.quantity);
+    const pricePerUnit = Number(form.pricePerUnit);
+    if (!form.quantity.trim() || !Number.isFinite(quantity) || quantity <= 0) {
+      return setError("Quantity must be positive.");
+    }
+    if (
+      requiresPrice &&
+      (!form.pricePerUnit.trim() || !Number.isFinite(pricePerUnit) || pricePerUnit < 0)
+    ) {
       return setError("Price per unit is required for sale usage.");
     }
     setSaving(true);
     try {
       await batchUsageApi.create(batch.id, {
         ...form,
-        pricePerUnit: requiresPrice ? form.pricePerUnit : null,
+        quantity,
+        pricePerUnit: requiresPrice ? pricePerUnit : null,
         customerName: form.customerName || null,
         customerType: form.customerType || null,
         reason: form.reason || null,
@@ -1676,17 +1546,17 @@ function BatchUsagePanel({
           min={0}
           placeholder={`Quantity (${batch.unit})`}
           type="number"
-          value={form.quantity || ""}
-          onChange={(event) => setForm({ ...form, quantity: Number(event.target.value) })}
+          value={form.quantity}
+          onChange={(event) => setForm({ ...form, quantity: event.target.value })}
         />
         {requiresPrice ? (
           <input
             className={inputClass}
             min={0}
-            placeholder="Price per unit"
+            placeholder="Price Per Unit"
             type="number"
-            value={form.pricePerUnit ?? ""}
-            onChange={(event) => setForm({ ...form, pricePerUnit: Number(event.target.value) })}
+            value={form.pricePerUnit}
+            onChange={(event) => setForm({ ...form, pricePerUnit: event.target.value })}
           />
         ) : null}
         {form.usageType === "WASTED" ? (
