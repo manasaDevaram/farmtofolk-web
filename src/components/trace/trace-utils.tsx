@@ -95,9 +95,7 @@ export function MediaTile({
 
   return (
     <div
-      aria-label={alt}
       className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-100 via-lime-50 to-amber-100 ${className}`}
-      role="img"
     >
       {src ? (
         <SignedMedia

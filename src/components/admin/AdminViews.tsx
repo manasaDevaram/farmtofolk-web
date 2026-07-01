@@ -39,6 +39,7 @@ import type {
   VerificationPayload,
 } from "@/types/admin";
 import { cleanMediaUrl } from "@/lib/media-url";
+import { getTraceEventTypes } from "@/lib/trace-event-types";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
 import {
   AdminShell,
@@ -1308,8 +1309,7 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
                   {batch.farm?.farmName || batch.farmName || "Unknown farm"}
                 </p>
                 <p className="text-xs text-stone-400">
-                  Harvest {batch.harvestDate} - Packed {fmt(batch.packedDate)} - Best before{" "}
-                  {fmt(batch.bestBeforeDate)} - {batch.status}
+                  Harvest {batch.harvestDate} - {batch.status}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1440,8 +1440,6 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
                 { label: "Variety", value: batch.variety },
                 { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
                 { label: "Harvest Date", value: batch.harvestDate },
-                { label: "Packed Date", value: batch.packedDate },
-                { label: "Best Before", value: batch.bestBeforeDate },
                 { label: "Status", value: batch.status },
               ]}
             />
@@ -1475,6 +1473,11 @@ function TraceEventPanel({
     metadataJson: "",
   });
   const [saving, setSaving] = useState(false);
+  const [eventTypes, setEventTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    void getTraceEventTypes().then(setEventTypes);
+  }, []);
 
   async function save() {
     setSaving(true);
@@ -1511,7 +1514,7 @@ function TraceEventPanel({
           value={form.eventType}
           onChange={(event) => setForm({ ...form, eventType: event.target.value })}
         >
-          {["HARVESTED", "PACKED", "RECEIVED_AT_MARKET", "SOLD"].map((type) => (
+          {eventTypes.map((type) => (
             <option key={type}>{type}</option>
           ))}
         </select>
@@ -1559,10 +1562,7 @@ function PricePanel({
   const [form, setForm] = useState<PriceBreakdownPayload>({
     consumerPrice: 0,
     farmerPrice: 0,
-    transportCost: 0,
-    packingCost: 0,
-    organizationCost: 0,
-    platformCost: 0,
+    operationalCost: 0,
     currency: "INR",
     priceUnit: "kg",
   });
@@ -1573,10 +1573,7 @@ function PricePanel({
       setForm({
         consumerPrice: price.consumerPrice,
         farmerPrice: price.farmerPrice,
-        transportCost: price.transportCost ?? 0,
-        packingCost: price.packingCost ?? 0,
-        organizationCost: price.organizationCost ?? 0,
-        platformCost: price.platformCost ?? 0,
+        operationalCost: price.operationalCost,
         currency: price.currency,
         priceUnit: price.priceUnit,
       });
@@ -1594,16 +1591,7 @@ function PricePanel({
     <Card>
       <h2 className="text-xl font-black">Price Breakdown</h2>
       <div className="mt-3 grid gap-2">
-        {(
-          [
-            "consumerPrice",
-            "farmerPrice",
-            "transportCost",
-            "packingCost",
-            "organizationCost",
-            "platformCost",
-          ] as const
-        ).map((key) => (
+        {(["farmerPrice", "operationalCost", "consumerPrice"] as const).map((key) => (
           <input
             className={inputClass}
             key={key}
@@ -1614,6 +1602,9 @@ function PricePanel({
             onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })}
           />
         ))}
+        <p className="rounded-xl bg-stone-50 p-3 text-sm font-bold text-stone-700">
+          Margin: {form.consumerPrice - form.farmerPrice - form.operationalCost}
+        </p>
         <input
           className={inputClass}
           value={form.currency}

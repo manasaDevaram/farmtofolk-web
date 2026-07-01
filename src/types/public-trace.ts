@@ -23,8 +23,6 @@ export interface PublicTraceBatch {
   quantity: number;
   unit: string;
   harvestDate: string;
-  packedDate: Nullable<string>;
-  bestBeforeDate: Nullable<string>;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -108,10 +106,7 @@ export interface PublicTracePriceBreakdown {
   batchId: string;
   consumerPrice: number;
   farmerPrice: number;
-  transportCost: Nullable<number>;
-  packingCost: Nullable<number>;
-  organizationCost: Nullable<number>;
-  platformCost: Nullable<number>;
+  operationalCost: number;
   currency: string;
   priceUnit: string;
   createdAt: string;

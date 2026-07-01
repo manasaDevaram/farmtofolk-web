@@ -27,8 +27,6 @@ export function ProductDetailsCard({
               }
             />
             <FieldRow label="Harvest Date" value={formatDate(batch?.harvestDate)} />
-            <FieldRow label="Packed Date" value={formatDate(batch?.packedDate)} />
-            <FieldRow label="Best Before" value={formatDate(batch?.bestBeforeDate)} />
             <FieldRow label="Status" value={toTitleCase(batch?.status)} />
           </dl>
           <div>

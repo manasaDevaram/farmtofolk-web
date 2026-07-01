@@ -39,14 +39,10 @@ export function TraceHero({
           </span>
           100% Traceable
         </div>
-        <dl className="mt-6 grid max-w-lg gap-3 text-sm text-stone-700 sm:grid-cols-2">
+        <dl className="mt-6 grid max-w-lg gap-3 text-sm text-stone-700">
           <div>
             <dt className="font-semibold text-stone-500">Harvested</dt>
             <dd className="font-black text-stone-950">{formatDate(batch?.harvestDate)}</dd>
-          </div>
-          <div>
-            <dt className="font-semibold text-stone-500">Best before</dt>
-            <dd className="font-black text-stone-950">{formatDate(batch?.bestBeforeDate)}</dd>
           </div>
         </dl>
       </div>
