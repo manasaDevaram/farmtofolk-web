@@ -1,5 +1,6 @@
 import type { PublicTraceBatch, PublicTraceMedia } from "@/types/public-trace";
-import { CheckIcon, formatDate, mediaSrc } from "./trace-utils";
+import { SignedMedia } from "@/components/SignedMedia";
+import { CheckIcon, formatDate, isVideo, mediaSrc } from "./trace-utils";
 
 export function TraceHero({
   batch,
@@ -9,13 +10,19 @@ export function TraceHero({
   farmMedia?: PublicTraceMedia[] | null;
 }) {
   const cropName = batch?.cropName || "Fresh Produce";
-  const heroImage = mediaSrc(farmMedia?.find((item) => item.isPublic) ?? farmMedia?.[0]);
+  const heroMedia = farmMedia?.find((item) => item.isPublic) ?? farmMedia?.[0];
+  const heroImage = mediaSrc(heroMedia);
 
   return (
-    <section
-      className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-emerald-950 shadow-[0_20px_50px_rgba(32,72,45,0.16)]"
-      style={heroImage ? { backgroundImage: `url(${heroImage})` } : undefined}
-    >
+    <section className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-emerald-950 shadow-[0_20px_50px_rgba(32,72,45,0.16)]">
+      {heroImage ? (
+        <SignedMedia
+          alt="Featured farm media"
+          className="absolute inset-0 h-full w-full object-cover"
+          kind={isVideo(heroMedia) ? "video" : "image"}
+          src={heroImage}
+        />
+      ) : null}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_45%,rgba(239,68,68,0.85)_0_9%,transparent_10%),radial-gradient(circle_at_70%_55%,rgba(220,38,38,0.9)_0_11%,transparent_12%),radial-gradient(circle_at_91%_60%,rgba(248,113,113,0.82)_0_8%,transparent_9%),linear-gradient(100deg,#f8f3e9_0%,rgba(248,243,233,0.92)_36%,rgba(248,243,233,0.22)_62%,rgba(31,90,45,0.15)_100%)] bg-cover bg-center" />
       <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_60%_48%,#ef4444_0_12%,transparent_13%),radial-gradient(circle_at_78%_56%,#dc2626_0_10%,transparent_11%),radial-gradient(circle_at_45%_60%,#f97316_0_9%,transparent_10%)] opacity-80 sm:block" />
       <div className="relative min-h-64 bg-gradient-to-r from-[#f8f3e9] via-[#f8f3e9]/90 to-transparent p-7 sm:min-h-80 sm:p-10">

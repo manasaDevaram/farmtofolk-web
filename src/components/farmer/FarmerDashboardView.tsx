@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { Card, ErrorState, InfoGrid, LoadingState } from "@/components/admin/AdminPrimitives";
+import { SignedMedia } from "@/components/SignedMedia";
 import { farmerDashboardApi } from "@/lib/admin-api";
 import type {
   FarmerDashboardSummaryResponse,
@@ -81,6 +82,26 @@ export function FarmerDashboardView() {
         {summary ? (
           <>
             <Card>
+              <div className="mb-5 grid gap-4 sm:grid-cols-2">
+                {summary.farmer.profilePhotoUrl ? (
+                  <SignedMedia
+                    alt={`${summary.farmer.name} profile photo`}
+                    className="aspect-square max-h-72 w-full rounded-2xl object-cover"
+                    kind="image"
+                    onReload={load}
+                    src={summary.farmer.profilePhotoUrl}
+                  />
+                ) : null}
+                {summary.farmer.introVideoUrl ? (
+                  <SignedMedia
+                    alt={`${summary.farmer.name} introduction video`}
+                    className="aspect-video w-full rounded-2xl bg-stone-950 object-cover"
+                    kind="video"
+                    onReload={load}
+                    src={summary.farmer.introVideoUrl}
+                  />
+                ) : null}
+              </div>
               <InfoGrid items={[
                 { label: "Name", value: summary.farmer.name },
                 { label: "Farmer code", value: summary.farmer.farmerCode },

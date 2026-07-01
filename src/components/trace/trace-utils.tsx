@@ -1,4 +1,6 @@
 import type { PublicTraceMedia } from "@/types/public-trace";
+import { SignedMedia } from "@/components/SignedMedia";
+import { cleanMediaUrl } from "@/lib/media-url";
 
 export function formatDate(value?: string | null): string {
   if (!value) return "Not available";
@@ -50,8 +52,8 @@ export function compactLocation(...parts: Array<string | null | undefined>): str
 
 export function mediaSrc(media?: PublicTraceMedia | null): string | null {
   if (!media) return null;
-  if ("fileUrl" in media) return media.fileUrl;
-  return media.mediaUrl;
+  if ("fileUrl" in media) return cleanMediaUrl(media.fileUrl);
+  return cleanMediaUrl(media.mediaUrl);
 }
 
 export function isVideo(media?: PublicTraceMedia | null): boolean {
@@ -94,10 +96,17 @@ export function MediaTile({
   return (
     <div
       aria-label={alt}
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-100 via-lime-50 to-amber-100 bg-cover bg-center ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-100 via-lime-50 to-amber-100 ${className}`}
       role="img"
-      style={src ? { backgroundImage: `url(${src})` } : undefined}
     >
+      {src ? (
+        <SignedMedia
+          alt={alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          kind={isVideo(media) ? "video" : "image"}
+          src={src}
+        />
+      ) : null}
       {!src ? (
         <div className="flex h-full min-h-20 items-center justify-center text-3xl text-emerald-800">
           <LeafIcon className="h-8 w-8" />

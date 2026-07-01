@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { SignedMedia } from "@/components/SignedMedia";
 import {
   batchApi,
   dashboardApi,
@@ -37,6 +38,7 @@ import type {
   VerificationEvidence,
   VerificationPayload,
 } from "@/types/admin";
+import { cleanMediaUrl } from "@/lib/media-url";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
 import {
   AdminShell,
@@ -468,7 +470,8 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
               label="Profile photo"
               accept="image/jpeg,image/png,image/webp"
               onUpload={(file) => farmerApi.uploadProfilePhoto(farmer.id, file)}
-              onUploaded={load}
+              onReload={load}
+              onUploaded={setFarmer}
               previewType="image"
             />
             <FarmerMediaUpload
@@ -476,7 +479,8 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
               label="Intro video"
               accept="video/mp4,video/quicktime,video/webm"
               onUpload={(file) => farmerApi.uploadIntroVideo(farmer.id, file)}
-              onUploaded={load}
+              onReload={load}
+              onUploaded={setFarmer}
               previewType="video"
             />
           </div>
@@ -855,6 +859,7 @@ function FarmerMediaUpload({
   accept,
   currentUrl,
   label,
+  onReload,
   onUpload,
   onUploaded,
   previewType,
@@ -862,22 +867,23 @@ function FarmerMediaUpload({
   accept: string;
   currentUrl: string | null;
   label: string;
+  onReload: () => void;
   onUpload: (file: File) => Promise<Farmer>;
-  onUploaded: () => void;
+  onUploaded: (farmer: Farmer) => void;
   previewType: "image" | "video";
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const previewUrl = useFilePreview(file);
-  const displayUrl = previewUrl ?? currentUrl;
+  const displayUrl = previewUrl ?? cleanMediaUrl(currentUrl);
 
   async function upload() {
     if (!file) return;
     setSaving(true);
     try {
-      await onUpload(file);
+      const updatedFarmer = await onUpload(file);
       setFile(null);
-      onUploaded();
+      onUploaded(updatedFarmer);
     } finally {
       setSaving(false);
     }
@@ -889,6 +895,7 @@ function FarmerMediaUpload({
       <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr]">
         <MediaPreview
           className="aspect-square rounded-2xl"
+          onReload={onReload}
           type={previewType}
           url={displayUrl}
         />
@@ -1029,14 +1036,18 @@ function DropUpload({
 
 function MediaPreview({
   className,
+  onReload,
   type,
   url,
 }: {
   className: string;
+  onReload?: () => void;
   type?: string | null;
   url?: string | null;
 }) {
-  if (!url) {
+  const cleanUrl = cleanMediaUrl(url);
+
+  if (!cleanUrl) {
     return (
       <div
         className={`${className} flex items-center justify-center bg-emerald-50 text-sm font-black text-emerald-800`}
@@ -1045,21 +1056,32 @@ function MediaPreview({
       </div>
     );
   }
-  if (isVideoFile(type, url)) {
-    return <video className={`${className} bg-stone-950 object-cover`} controls src={url} />;
-  }
-  if (isImageFile(type, url) || type === "image") {
+  if (isVideoFile(type, cleanUrl)) {
     return (
-      <div
-        className={`${className} bg-emerald-100 bg-cover bg-center`}
-        style={{ backgroundImage: `url(${url})` }}
+      <SignedMedia
+        alt="Video"
+        className={`${className} bg-stone-950 object-cover`}
+        kind="video"
+        onReload={onReload}
+        src={cleanUrl}
+      />
+    );
+  }
+  if (isImageFile(type, cleanUrl) || type === "image") {
+    return (
+      <SignedMedia
+        alt="Media preview"
+        className={`${className} bg-emerald-100 object-cover`}
+        kind="image"
+        onReload={onReload}
+        src={cleanUrl}
       />
     );
   }
   return (
     <a
       className={`${className} flex items-center justify-center bg-stone-100 p-3 text-center text-sm font-black text-stone-700`}
-      href={url}
+      href={cleanUrl}
       rel="noreferrer"
       target="_blank"
     >
