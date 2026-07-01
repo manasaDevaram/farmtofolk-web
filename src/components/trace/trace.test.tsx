@@ -17,7 +17,6 @@ vi.mock("@/lib/api", () => ({
 
 const sampleTrace: PublicTraceResponse = {
   batch: {
-    bestBeforeDate: "2026-06-30",
     batchCode: "BATCH-001",
     cropName: "Tomatoes",
     createdAt: "2026-06-20T00:00:00Z",
@@ -25,7 +24,6 @@ const sampleTrace: PublicTraceResponse = {
     farmerId: "farmer-1",
     harvestDate: "2026-06-20",
     id: "batch-1",
-    packedDate: "2026-06-21",
     quantity: 120,
     status: "READY",
     unit: "kg",
@@ -85,11 +83,8 @@ const sampleTrace: PublicTraceResponse = {
     currency: "INR",
     farmerPrice: 52,
     id: "price-1",
-    organizationCost: 5,
-    packingCost: 8,
-    platformCost: 5,
+    operationalCost: 28,
     priceUnit: "kg",
-    transportCost: 10,
     updatedAt: "2026-06-21T00:00:00Z",
   },
   qrCode: {
@@ -165,18 +160,13 @@ describe("public trace page", () => {
     expect(screen.getByText(/practicing natural farming for over 12 years/i)).toBeInTheDocument();
   });
 
-  it("calculates farmer percentage correctly", () => {
+  it("shows only the public price summary", () => {
     render(<MoneyBreakdownCard priceBreakdown={sampleTrace.priceBreakdown} />);
 
-    expect(screen.getByText(/Farmer gets/i)).toHaveTextContent("65%");
-  });
-
-  it("shows N/A for money percentages when consumer price is missing", () => {
-    render(
-      <MoneyBreakdownCard priceBreakdown={{ ...sampleTrace.priceBreakdown, consumerPrice: 0 }} />,
-    );
-
-    expect(screen.getByText(/Farmer gets/i)).toHaveTextContent("N/A");
+    expect(screen.getByText(/You paid/i)).toBeInTheDocument();
+    expect(screen.getByText(/Farmer received/i)).toBeInTheDocument();
+    expect(screen.getByText(/Farm-to-consumer cost/i)).toBeInTheDocument();
+    expect(screen.queryByText(/margin/i)).not.toBeInTheDocument();
   });
 
   it("parses verification checklist JSON and renders observations", () => {

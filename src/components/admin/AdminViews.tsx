@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { SignedMedia } from "@/components/SignedMedia";
 import {
   batchApi,
   dashboardApi,
@@ -37,6 +38,8 @@ import type {
   VerificationEvidence,
   VerificationPayload,
 } from "@/types/admin";
+import { cleanMediaUrl } from "@/lib/media-url";
+import { getTraceEventTypes } from "@/lib/trace-event-types";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
 import {
   AdminShell,
@@ -468,7 +471,8 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
               label="Profile photo"
               accept="image/jpeg,image/png,image/webp"
               onUpload={(file) => farmerApi.uploadProfilePhoto(farmer.id, file)}
-              onUploaded={load}
+              onReload={load}
+              onUploaded={setFarmer}
               previewType="image"
             />
             <FarmerMediaUpload
@@ -476,7 +480,8 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
               label="Intro video"
               accept="video/mp4,video/quicktime,video/webm"
               onUpload={(file) => farmerApi.uploadIntroVideo(farmer.id, file)}
-              onUploaded={load}
+              onReload={load}
+              onUploaded={setFarmer}
               previewType="video"
             />
           </div>
@@ -855,6 +860,7 @@ function FarmerMediaUpload({
   accept,
   currentUrl,
   label,
+  onReload,
   onUpload,
   onUploaded,
   previewType,
@@ -862,22 +868,23 @@ function FarmerMediaUpload({
   accept: string;
   currentUrl: string | null;
   label: string;
+  onReload: () => void;
   onUpload: (file: File) => Promise<Farmer>;
-  onUploaded: () => void;
+  onUploaded: (farmer: Farmer) => void;
   previewType: "image" | "video";
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const previewUrl = useFilePreview(file);
-  const displayUrl = previewUrl ?? currentUrl;
+  const displayUrl = previewUrl ?? cleanMediaUrl(currentUrl);
 
   async function upload() {
     if (!file) return;
     setSaving(true);
     try {
-      await onUpload(file);
+      const updatedFarmer = await onUpload(file);
       setFile(null);
-      onUploaded();
+      onUploaded(updatedFarmer);
     } finally {
       setSaving(false);
     }
@@ -889,6 +896,7 @@ function FarmerMediaUpload({
       <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr]">
         <MediaPreview
           className="aspect-square rounded-2xl"
+          onReload={onReload}
           type={previewType}
           url={displayUrl}
         />
@@ -1029,14 +1037,18 @@ function DropUpload({
 
 function MediaPreview({
   className,
+  onReload,
   type,
   url,
 }: {
   className: string;
+  onReload?: () => void;
   type?: string | null;
   url?: string | null;
 }) {
-  if (!url) {
+  const cleanUrl = cleanMediaUrl(url);
+
+  if (!cleanUrl) {
     return (
       <div
         className={`${className} flex items-center justify-center bg-emerald-50 text-sm font-black text-emerald-800`}
@@ -1045,21 +1057,32 @@ function MediaPreview({
       </div>
     );
   }
-  if (isVideoFile(type, url)) {
-    return <video className={`${className} bg-stone-950 object-cover`} controls src={url} />;
-  }
-  if (isImageFile(type, url) || type === "image") {
+  if (isVideoFile(type, cleanUrl)) {
     return (
-      <div
-        className={`${className} bg-emerald-100 bg-cover bg-center`}
-        style={{ backgroundImage: `url(${url})` }}
+      <SignedMedia
+        alt="Video"
+        className={`${className} bg-stone-950 object-cover`}
+        kind="video"
+        onReload={onReload}
+        src={cleanUrl}
+      />
+    );
+  }
+  if (isImageFile(type, cleanUrl) || type === "image") {
+    return (
+      <SignedMedia
+        alt="Media preview"
+        className={`${className} bg-emerald-100 object-cover`}
+        kind="image"
+        onReload={onReload}
+        src={cleanUrl}
       />
     );
   }
   return (
     <a
       className={`${className} flex items-center justify-center bg-stone-100 p-3 text-center text-sm font-black text-stone-700`}
-      href={url}
+      href={cleanUrl}
       rel="noreferrer"
       target="_blank"
     >
@@ -1286,8 +1309,7 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
                   {batch.farm?.farmName || batch.farmName || "Unknown farm"}
                 </p>
                 <p className="text-xs text-stone-400">
-                  Harvest {batch.harvestDate} - Packed {fmt(batch.packedDate)} - Best before{" "}
-                  {fmt(batch.bestBeforeDate)} - {batch.status}
+                  Harvest {batch.harvestDate} - {batch.status}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1418,8 +1440,6 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
                 { label: "Variety", value: batch.variety },
                 { label: "Quantity", value: `${batch.quantity} ${batch.unit}` },
                 { label: "Harvest Date", value: batch.harvestDate },
-                { label: "Packed Date", value: batch.packedDate },
-                { label: "Best Before", value: batch.bestBeforeDate },
                 { label: "Status", value: batch.status },
               ]}
             />
@@ -1453,6 +1473,11 @@ function TraceEventPanel({
     metadataJson: "",
   });
   const [saving, setSaving] = useState(false);
+  const [eventTypes, setEventTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    void getTraceEventTypes().then(setEventTypes);
+  }, []);
 
   async function save() {
     setSaving(true);
@@ -1489,7 +1514,7 @@ function TraceEventPanel({
           value={form.eventType}
           onChange={(event) => setForm({ ...form, eventType: event.target.value })}
         >
-          {["HARVESTED", "PACKED", "RECEIVED_AT_MARKET", "SOLD"].map((type) => (
+          {eventTypes.map((type) => (
             <option key={type}>{type}</option>
           ))}
         </select>
@@ -1537,10 +1562,7 @@ function PricePanel({
   const [form, setForm] = useState<PriceBreakdownPayload>({
     consumerPrice: 0,
     farmerPrice: 0,
-    transportCost: 0,
-    packingCost: 0,
-    organizationCost: 0,
-    platformCost: 0,
+    operationalCost: 0,
     currency: "INR",
     priceUnit: "kg",
   });
@@ -1551,10 +1573,7 @@ function PricePanel({
       setForm({
         consumerPrice: price.consumerPrice,
         farmerPrice: price.farmerPrice,
-        transportCost: price.transportCost ?? 0,
-        packingCost: price.packingCost ?? 0,
-        organizationCost: price.organizationCost ?? 0,
-        platformCost: price.platformCost ?? 0,
+        operationalCost: price.operationalCost,
         currency: price.currency,
         priceUnit: price.priceUnit,
       });
@@ -1572,16 +1591,7 @@ function PricePanel({
     <Card>
       <h2 className="text-xl font-black">Price Breakdown</h2>
       <div className="mt-3 grid gap-2">
-        {(
-          [
-            "consumerPrice",
-            "farmerPrice",
-            "transportCost",
-            "packingCost",
-            "organizationCost",
-            "platformCost",
-          ] as const
-        ).map((key) => (
+        {(["farmerPrice", "operationalCost", "consumerPrice"] as const).map((key) => (
           <input
             className={inputClass}
             key={key}
@@ -1592,6 +1602,9 @@ function PricePanel({
             onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })}
           />
         ))}
+        <p className="rounded-xl bg-stone-50 p-3 text-sm font-bold text-stone-700">
+          Margin: {form.consumerPrice - form.farmerPrice - form.operationalCost}
+        </p>
         <input
           className={inputClass}
           value={form.currency}

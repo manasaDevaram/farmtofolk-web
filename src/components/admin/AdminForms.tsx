@@ -329,8 +329,6 @@ export function BatchForm({
     farmId: initial?.farmId ?? lockedFarmId ?? "",
     farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
     harvestDate: initial?.harvestDate ?? today(),
-    packedDate: initial?.packedDate ?? "",
-    bestBeforeDate: initial?.bestBeforeDate ?? "",
     quantity: initial?.quantity ?? 0,
     status: initial?.status ?? "HARVESTED",
     unit: initial?.unit ?? "kg",
@@ -381,8 +379,6 @@ export function BatchForm({
     try {
       await onSubmit({
         ...form,
-        packedDate: form.packedDate || null,
-        bestBeforeDate: form.bestBeforeDate || null,
         variety: form.variety || null,
       });
       setState({ success: "Batch saved successfully." });
@@ -484,25 +480,13 @@ export function BatchForm({
       </Card>
       <Card>
         <h2 className="text-xl font-black">Dates</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <TextField
             label="Harvest Date"
             required
             type="date"
             value={form.harvestDate}
             onChange={(harvestDate) => setForm({ ...form, harvestDate })}
-          />
-          <TextField
-            label="Packed Date"
-            type="date"
-            value={form.packedDate ?? ""}
-            onChange={(packedDate) => setForm({ ...form, packedDate })}
-          />
-          <TextField
-            label="Best Before Date"
-            type="date"
-            value={form.bestBeforeDate ?? ""}
-            onChange={(bestBeforeDate) => setForm({ ...form, bestBeforeDate })}
           />
         </div>
       </Card>

@@ -1,4 +1,5 @@
 import type { PublicTraceFarmer } from "@/types/public-trace";
+import { SignedMedia } from "@/components/SignedMedia";
 import { TraceAccordionCard } from "./TraceAccordionCard";
 import { CheckIcon, compactLocation, FieldRow, formatDate, LeafIcon } from "./trace-utils";
 
@@ -11,9 +12,11 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
       accent="bg-emerald-50 text-emerald-800"
       icon={
         farmer?.profilePhotoUrl ? (
-          <div
-            className="h-full w-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${farmer.profilePhotoUrl})` }}
+          <SignedMedia
+            alt={`${farmer.name || "Farmer"} profile photo`}
+            className="h-full w-full object-cover"
+            kind="image"
+            src={farmer.profilePhotoUrl}
           />
         ) : (
           <LeafIcon className="h-9 w-9" />
@@ -32,14 +35,12 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
             </p>
           </div>
           {farmer?.introVideoUrl ? (
-            <a
-              className="block rounded-3xl border border-emerald-100 bg-emerald-50 p-4 font-bold text-emerald-900"
-              href={farmer.introVideoUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Watch farmer intro video
-            </a>
+            <SignedMedia
+              alt={`${farmer.name || "Farmer"} introduction video`}
+              className="aspect-video w-full rounded-3xl bg-stone-950 object-cover"
+              kind="video"
+              src={farmer.introVideoUrl}
+            />
           ) : (
             <div className="rounded-3xl bg-stone-50 p-4 text-sm text-stone-600">
               Farmer intro video is not available yet.
