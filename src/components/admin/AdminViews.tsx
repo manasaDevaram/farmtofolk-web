@@ -1588,6 +1588,11 @@ const saleUsageTypes: BatchUsageType[] = [
   "EXPERIENCE_CENTRE",
 ];
 
+type BatchUsageFormState = Omit<CreateBatchUsagePayload, "quantity" | "pricePerUnit"> & {
+  quantity: string;
+  pricePerUnit: string;
+};
+
 function BatchUsagePanel({
   batch,
   onSaved,
@@ -1597,10 +1602,10 @@ function BatchUsagePanel({
   onSaved: () => void;
   usage: BatchUsage[];
 }) {
-  const [form, setForm] = useState<CreateBatchUsagePayload>({
+  const [form, setForm] = useState<BatchUsageFormState>({
     usageType: "SOLD_ONLINE",
-    quantity: 0,
-    pricePerUnit: null,
+    quantity: "",
+    pricePerUnit: "",
     customerName: "",
     customerType: "",
     reason: "",
@@ -1613,15 +1618,23 @@ function BatchUsagePanel({
 
   async function save() {
     setError("");
-    if (form.quantity <= 0) return setError("Quantity must be positive.");
-    if (requiresPrice && (form.pricePerUnit == null || form.pricePerUnit < 0)) {
+    const quantity = Number(form.quantity);
+    const pricePerUnit = Number(form.pricePerUnit);
+    if (!form.quantity.trim() || !Number.isFinite(quantity) || quantity <= 0) {
+      return setError("Quantity must be positive.");
+    }
+    if (
+      requiresPrice &&
+      (!form.pricePerUnit.trim() || !Number.isFinite(pricePerUnit) || pricePerUnit < 0)
+    ) {
       return setError("Price per unit is required for sale usage.");
     }
     setSaving(true);
     try {
       await batchUsageApi.create(batch.id, {
         ...form,
-        pricePerUnit: requiresPrice ? form.pricePerUnit : null,
+        quantity,
+        pricePerUnit: requiresPrice ? pricePerUnit : null,
         customerName: form.customerName || null,
         customerType: form.customerType || null,
         reason: form.reason || null,
@@ -1676,17 +1689,17 @@ function BatchUsagePanel({
           min={0}
           placeholder={`Quantity (${batch.unit})`}
           type="number"
-          value={form.quantity || ""}
-          onChange={(event) => setForm({ ...form, quantity: Number(event.target.value) })}
+          value={form.quantity}
+          onChange={(event) => setForm({ ...form, quantity: event.target.value })}
         />
         {requiresPrice ? (
           <input
             className={inputClass}
             min={0}
-            placeholder="Price per unit"
+            placeholder="Price Per Unit"
             type="number"
-            value={form.pricePerUnit ?? ""}
-            onChange={(event) => setForm({ ...form, pricePerUnit: Number(event.target.value) })}
+            value={form.pricePerUnit}
+            onChange={(event) => setForm({ ...form, pricePerUnit: event.target.value })}
           />
         ) : null}
         {form.usageType === "WASTED" ? (

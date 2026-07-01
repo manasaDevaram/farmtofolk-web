@@ -25,7 +25,7 @@ export type InternalUserResponse = {
   name: string;
   email: Nullable<string>;
   phone: Nullable<string>;
-  role: InternalUserRole;
+  role: UserRole;
   active: boolean;
 };
 

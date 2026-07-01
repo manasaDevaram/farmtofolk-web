@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { BotanicalCorner, EmptyBasket, LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { clearSession, getSessionUser } from "@/lib/auth-session";
+import { formatUserRole } from "@/lib/user-role";
 
 const navigation = [
   { href: "/admin", icon: "D", label: "Dashboard" },
@@ -54,11 +55,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="mt-auto border-t border-[var(--ftf-border)] pt-4">
           <div className="mb-3 flex items-center gap-3 px-2">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--ftf-sage)] font-bold text-[var(--ftf-green-900)]">
-              A
+              {currentUser?.name?.slice(0, 1).toUpperCase() || "U"}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold">Administrator</p>
-              <p className="truncate text-xs text-[var(--ftf-muted)]">Admin workspace</p>
+              <p className="truncate text-sm font-bold">{currentUser?.name || "Signed-in user"}</p>
+              <p className="truncate text-xs text-[var(--ftf-muted)]">
+                {formatUserRole(currentUser?.role)} workspace
+              </p>
             </div>
           </div>
           <button

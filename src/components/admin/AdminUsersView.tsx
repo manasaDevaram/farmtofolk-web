@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminUserApi } from "@/lib/admin-api";
 import { getSessionUser } from "@/lib/auth-session";
+import { formatUserRole } from "@/lib/user-role";
 import type {
   CreateInternalUserRequest,
   InternalUserResponse,
@@ -119,11 +120,9 @@ export function AdminUsersView() {
                         <span className="text-[var(--ftf-muted)]">(You)</span>
                       ) : null}
                     </td>
-                    <td className="p-4">{user.email || "Not available"}</td>
+                    <td className="p-4">{user.email ?? "Not available"}</td>
                     <td className="p-4">{user.phone || "Not available"}</td>
-                    <td className="p-4">
-                      {user.role === "FIELD_OFFICER" ? "Field Officer" : "Admin"}
-                    </td>
+                    <td className="p-4">{formatUserRole(user.role)}</td>
                     <td className="p-4">
                       <StatusBadge active={user.active} />
                     </td>
@@ -135,19 +134,21 @@ export function AdminUsersView() {
                         >
                           Edit
                         </Button>
-                        <Button
-                          disabled={isCurrentUser}
-                          variant="secondary"
-                          onClick={() =>
-                            void act(() =>
-                              adminUserApi.updateRole(user.id, {
-                                role: user.role === "ADMIN" ? "FIELD_OFFICER" : "ADMIN",
-                              }),
-                            )
-                          }
-                        >
-                          Make {user.role === "ADMIN" ? "Field Officer" : "Admin"}
-                        </Button>
+                        {user.role === "ADMIN" || user.role === "FIELD_OFFICER" ? (
+                          <Button
+                            disabled={isCurrentUser}
+                            variant="secondary"
+                            onClick={() =>
+                              void act(() =>
+                                adminUserApi.updateRole(user.id, {
+                                  role: user.role === "ADMIN" ? "FIELD_OFFICER" : "ADMIN",
+                                }),
+                              )
+                            }
+                          >
+                            Make {user.role === "ADMIN" ? "Field Officer" : "Admin"}
+                          </Button>
+                        ) : null}
                         <Button
                           disabled={isCurrentUser}
                           variant={user.active ? "danger" : "primary"}
@@ -198,19 +199,19 @@ function UserEditor({
     }
     setSaving(true);
     try {
-      if (existing) {
+      if (editor.mode === "edit") {
         const payload: UpdateInternalUserRequest = {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
         };
-        await adminUserApi.update(existing.id, payload);
+        await adminUserApi.update(editor.user.id, payload);
       } else {
         const payload: CreateInternalUserRequest = {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          role: editor.mode === "create" ? editor.role : "ADMIN",
+          role: editor.role,
           initialPassword: password,
         };
         await adminUserApi.create(payload);
