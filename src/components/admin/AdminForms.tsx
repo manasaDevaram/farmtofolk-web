@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Batch, BatchPayload, Farm, Farmer, FarmerPayload, FarmPayload } from "@/types/admin";
-import { Button, Card, Field, inputClass } from "./AdminPrimitives";
+import { Button, Card, CreatableCombobox, Field, inputClass } from "./AdminPrimitives";
 
 type SubmitState = { error?: string; success?: string };
 
@@ -332,19 +332,23 @@ export function FarmForm({
 
 // BatchForm guides the operator through farmer -> farm -> batch creation.
 export function BatchForm({
+  cropOptions,
   farms,
   farmers,
   initial,
   lockedFarmId,
   lockedFarmerId,
   onSubmit,
+  varietyOptions,
 }: {
+  cropOptions?: string[];
   farms: Farm[];
   farmers: Farmer[];
   initial?: Batch | null;
   lockedFarmId?: string | null;
   lockedFarmerId?: string | null;
   onSubmit: (payload: BatchPayload) => Promise<void>;
+  varietyOptions?: string[];
 }) {
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<SubmitState>({});
@@ -459,14 +463,18 @@ export function BatchForm({
               </Button>
             </div>
           </Field>
-          <TextField
+          <CreatableCombobox
             label="Crop Name"
+            options={cropOptions ?? []}
+            placeholder="Choose or add a crop"
             required
             value={form.cropName}
             onChange={(cropName) => setForm({ ...form, cropName })}
           />
-          <TextField
+          <CreatableCombobox
             label="Variety"
+            options={varietyOptions ?? []}
+            placeholder="Choose or add a variety"
             value={form.variety ?? ""}
             onChange={(variety) => setForm({ ...form, variety })}
           />
