@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LeafMark } from "@/components/assets/FarmToFolkAssets";
+import { BRAND_NAME } from "@/lib/constants";
 import { Card, ErrorState, LoadingState } from "@/components/admin/AdminPrimitives";
 import { SignedMedia } from "@/components/SignedMedia";
 import { farmerDashboardApi } from "@/lib/admin-api";
@@ -121,7 +122,7 @@ export function FarmerDashboardView() {
         <header className="flex items-center gap-3 text-[var(--ftf-green-900)]">
           <LeafMark className="h-11 w-11" />
           <div>
-            <p className="ftf-display text-2xl font-bold">FarmToFolk Farmer</p>
+            <p className="ftf-display text-2xl font-bold">{BRAND_NAME} Farmer</p>
             <p className="text-sm text-[var(--ftf-muted)]">Your farms, batches, and payments</p>
           </div>
         </header>

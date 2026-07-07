@@ -6,6 +6,7 @@ import { ChevronIcon } from "./trace-utils";
 export function TraceAccordionCard({
   accent = "bg-emerald-100 text-emerald-800",
   children,
+  defaultOpen = false,
   icon,
   openContent,
   summary,
@@ -13,33 +14,34 @@ export function TraceAccordionCard({
 }: {
   accent?: string;
   children?: ReactNode;
+  defaultOpen?: boolean;
   icon: ReactNode;
   openContent: ReactNode;
   summary: ReactNode;
   title: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const contentId = useId();
 
   return (
-    <section className="rounded-2xl border border-[var(--ftf-border)] bg-[var(--ftf-paper-light)] shadow-[0_10px_28px_rgba(65,49,29,0.08)]">
+    <section className="overflow-hidden rounded-2xl border border-[var(--ftf-border)] bg-white shadow-[0_6px_20px_rgba(65,49,29,0.07)]">
       <button
         aria-controls={contentId}
         aria-expanded={isOpen}
-        className="ftf-focus flex w-full cursor-pointer items-center gap-4 rounded-2xl p-4 text-left outline-none transition hover:bg-[var(--ftf-sage)]/35 sm:gap-6 sm:p-6"
+        className="ftf-focus flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3 text-left outline-none transition hover:bg-[var(--ftf-sage)]/35 sm:px-5 sm:py-4"
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
         <div
-          className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-3xl sm:h-20 sm:w-20 ${accent}`}
+          className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-16 sm:w-16 ${accent}`}
         >
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-bold tracking-tight text-[var(--ftf-text)] sm:text-2xl">
+          <h2 className="text-xl font-extrabold tracking-tight text-[var(--ftf-text)]">
             {title}
           </h2>
-          <div className="mt-1 text-sm leading-6 text-[var(--ftf-muted)] sm:text-base">
+          <div className="mt-0.5 text-sm leading-5 text-[var(--ftf-muted)]">
             {summary}
           </div>
           {children}
@@ -50,7 +52,7 @@ export function TraceAccordionCard({
       </button>
       {isOpen ? (
         <div
-          className="border-t border-[var(--ftf-border)] px-4 pb-5 pt-4 sm:px-6 sm:pb-6"
+          className="border-t border-stone-100 px-4 pb-4 pt-3 sm:px-5 sm:pb-5"
           id={contentId}
         >
           {openContent}

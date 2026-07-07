@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { LeafDivider, LeafMark, Seedling } from "@/components/assets/FarmToFolkAssets";
 import { authApi } from "@/lib/admin-api";
 import { saveSession } from "@/lib/auth-session";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/constants";
 
 export function LoginView() {
   const router = useRouter();
@@ -66,9 +67,9 @@ export function LoginView() {
             <div className="flex items-center gap-3 text-[var(--ftf-green-900)]">
               <LeafMark className="h-12 w-12" />
               <div>
-                <p className="ftf-display text-3xl font-bold">FarmToFolk</p>
+                <p className="ftf-display text-3xl font-bold">{BRAND_NAME}</p>
                 <p className="text-xs font-semibold tracking-wide text-[var(--ftf-muted)]">
-                  Traceable. Transparent. Trusted.
+                {BRAND_TAGLINE}
                 </p>
               </div>
             </div>

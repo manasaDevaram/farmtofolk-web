@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { BRAND_NAME } from "@/lib/constants";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FarmToFolk",
-  description: "Traceable, transparent, trusted food from farm to folk.",
+  title: BRAND_NAME,
+  description: `${BRAND_NAME}: traceable, transparent, trusted food journeys.`,
 };
 
 export default function RootLayout({

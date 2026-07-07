@@ -22,6 +22,7 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
   if (trace.batch?.consumerPricePerUnit != null) active.add("Transparent Pricing");
   if (trace.batch || trace.qrCode) active.add("Traceable Batch");
   active.add("Data Integrity Ready");
+  const score = Math.round((active.size / badges.length) * 100);
 
   return (
     <TraceAccordionCard
@@ -43,8 +44,15 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
         </svg>
       }
       openContent={
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {badges.map((badge) => {
+        <div className="grid items-center gap-5 sm:grid-cols-[150px_1fr]">
+          <div className="mx-auto grid h-32 w-32 place-items-center rounded-full border-[12px] border-emerald-600 bg-white text-center shadow-inner">
+            <div>
+              <strong className="block text-4xl text-emerald-900">{score}</strong>
+              <span className="text-xs">/100</span>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {badges.map((badge) => {
             const isActive = active.has(badge);
             return (
               <div
@@ -65,15 +73,17 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
                 <span className="font-black">{badge}</span>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
       }
       summary={
         <p>
-          Trust signals based on verified people, farm evidence, pricing, and batch traceability.
+          <strong className="text-stone-950">{score}/100</strong> · Based on verification,
+          transparency and evidence.
         </p>
       }
-      title="Trust Summary"
+      title="Trust Score"
     />
   );
 }

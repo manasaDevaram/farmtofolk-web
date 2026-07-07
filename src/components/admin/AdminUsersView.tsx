@@ -10,6 +10,7 @@ import type {
   CreateInternalUserRequest,
   InternalUserResponse,
   InternalUserRole,
+  UserRole,
   UpdateInternalUserRequest,
 } from "@/types/admin";
 import {
@@ -35,6 +36,10 @@ export function AdminUsersView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | UserRole>("ALL");
+  const filteredUsers = users.filter(
+    (user) => roleFilter === "ALL" || user.role === roleFilter,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,8 +68,8 @@ export function AdminUsersView() {
   return (
     <AdminShell>
       <PageHeader
-        title="Internal Users"
-        description="Manage administrators and field officers. Farmer onboarding remains separate."
+        title="Users"
+        description="View users by role and manage administrator or field-officer access."
         actions={
           <>
             <Button onClick={() => setEditor({ mode: "create", role: "ADMIN" })}>Add Admin</Button>
@@ -77,6 +82,28 @@ export function AdminUsersView() {
           </>
         }
       />
+      <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter users by role">
+        {(
+          [
+            ["ALL", "All Users"],
+            ["ADMIN", "Admins"],
+            ["FIELD_OFFICER", "Field Officers"],
+            ["FARMER", "Farmers"],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={value}
+            onClick={() => setRoleFilter(value)}
+            variant={roleFilter === value ? "primary" : "secondary"}
+          >
+            {label} (
+            {value === "ALL"
+              ? users.length
+              : users.filter((user) => user.role === value).length}
+            )
+          </Button>
+        ))}
+      </div>
       {editor ? (
         <UserEditor
           editor={editor}
@@ -87,17 +114,17 @@ export function AdminUsersView() {
           }}
         />
       ) : null}
-      {loading ? <LoadingState label="Loading internal users..." /> : null}
+      {loading ? <LoadingState label="Loading users..." /> : null}
       {error ? <ErrorState message={error} onRetry={load} /> : null}
       {actionError ? (
         <div className="mb-4">
           <ErrorState message={actionError} />
         </div>
       ) : null}
-      {!loading && !error && !users.length ? (
-        <EmptyState message="No internal users have been added yet." />
+      {!loading && !error && !filteredUsers.length ? (
+        <EmptyState message="No users match this role filter." />
       ) : null}
-      {!loading && !error && users.length ? (
+      {!loading && !error && filteredUsers.length ? (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-[var(--ftf-border)] bg-[var(--ftf-sage)]/35">
@@ -110,7 +137,7 @@ export function AdminUsersView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--ftf-border)]">
-              {users.map((user) => {
+              {filteredUsers.map((user) => {
                 const isCurrentUser = user.id === currentUser?.id;
                 return (
                   <tr key={user.id}>
@@ -128,38 +155,44 @@ export function AdminUsersView() {
                     </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="secondary"
-                          onClick={() => setEditor({ mode: "edit", user })}
-                        >
-                          Edit
-                        </Button>
-                        {user.role === "ADMIN" || user.role === "FIELD_OFFICER" ? (
-                          <Button
-                            disabled={isCurrentUser}
-                            variant="secondary"
-                            onClick={() =>
-                              void act(() =>
-                                adminUserApi.updateRole(user.id, {
-                                  role: user.role === "ADMIN" ? "FIELD_OFFICER" : "ADMIN",
-                                }),
-                              )
-                            }
-                          >
-                            Make {user.role === "ADMIN" ? "Field Officer" : "Admin"}
-                          </Button>
-                        ) : null}
-                        <Button
-                          disabled={isCurrentUser}
-                          variant={user.active ? "danger" : "primary"}
-                          onClick={() =>
-                            void act(() =>
-                              adminUserApi.updateStatus(user.id, { active: !user.active }),
-                            )
-                          }
-                        >
-                          {user.active ? "Deactivate" : "Activate"}
-                        </Button>
+                        {user.role === "FARMER" ? (
+                          <span className="text-xs font-bold text-[var(--ftf-muted)]">
+                            Managed from Farmers
+                          </span>
+                        ) : (
+                          <>
+                            <Button
+                              variant="secondary"
+                              onClick={() => setEditor({ mode: "edit", user })}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              disabled={isCurrentUser}
+                              variant="secondary"
+                              onClick={() =>
+                                void act(() =>
+                                  adminUserApi.updateRole(user.id, {
+                                    role: user.role === "ADMIN" ? "FIELD_OFFICER" : "ADMIN",
+                                  }),
+                                )
+                              }
+                            >
+                              Make {user.role === "ADMIN" ? "Field Officer" : "Admin"}
+                            </Button>
+                            <Button
+                              disabled={isCurrentUser}
+                              variant={user.active ? "danger" : "primary"}
+                              onClick={() =>
+                                void act(() =>
+                                  adminUserApi.updateStatus(user.id, { active: !user.active }),
+                                )
+                              }
+                            >
+                              {user.active ? "Deactivate" : "Activate"}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

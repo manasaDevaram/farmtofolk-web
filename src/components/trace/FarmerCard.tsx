@@ -10,6 +10,7 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
   return (
     <TraceAccordionCard
       accent="bg-emerald-50 text-emerald-800"
+      defaultOpen
       icon={
         farmer?.profilePhotoUrl ? (
           <SignedMedia

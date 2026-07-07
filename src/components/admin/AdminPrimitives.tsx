@@ -6,9 +6,10 @@ import type { ReactNode } from "react";
 import { BotanicalCorner, EmptyBasket, LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { clearSession, getSessionUser } from "@/lib/auth-session";
 import { formatUserRole } from "@/lib/user-role";
+import { BRAND_NAME } from "@/lib/constants";
 
 const navigation = [
-  { href: "/admin", icon: "D", label: "Dashboard" },
+  { href: "/admin", fieldHref: "/field", icon: "D", label: "Dashboard" },
   { href: "/admin/farmers", icon: "P", label: "Farmers" },
   { href: "/admin/farms", icon: "F", label: "Farms" },
   { href: "/admin/batches", icon: "B", label: "Batches" },
@@ -22,6 +23,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const visibleNavigation = navigation.filter(
     (item) => !item.adminOnly || currentUser?.role === "ADMIN",
   );
+  const navigationForRole = visibleNavigation.map((item) => ({
+    ...item,
+    href: currentUser?.role === "FIELD_OFFICER" && item.fieldHref ? item.fieldHref : item.href,
+  }));
 
   function signOut() {
     clearSession();
@@ -33,14 +38,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside className="sticky top-0 hidden h-screen border-r border-[var(--ftf-border)] bg-[rgba(252,250,245,.86)] px-4 py-5 backdrop-blur md:flex md:flex-col">
         <Link className="flex items-center gap-2 px-2 text-[var(--ftf-green-900)]" href="/admin">
           <LeafMark className="h-10 w-10" />
-          <span className="ftf-display text-xl font-bold">FarmToFolk</span>
+          <span className="ftf-display text-xl font-bold">{BRAND_NAME}</span>
         </Link>
         <p className="mt-1 px-3 text-[10px] font-semibold tracking-wide text-[var(--ftf-muted)]">
           TRACEABILITY LEDGER
         </p>
 
         <nav aria-label="Admin navigation" className="mt-9 space-y-1.5">
-          {visibleNavigation.map((item) => (
+          {navigationForRole.map((item) => (
             <NavLink
               active={isActivePath(pathname, item.href)}
               href={item.href}
@@ -82,7 +87,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         aria-label="Mobile admin navigation"
         className="fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl border border-[var(--ftf-border)] bg-[rgba(31,61,37,.96)] p-2 text-white shadow-xl backdrop-blur md:hidden"
       >
-        {visibleNavigation.map((item) => {
+        {navigationForRole.map((item) => {
           const active = isActivePath(pathname, item.href);
           return (
             <Link

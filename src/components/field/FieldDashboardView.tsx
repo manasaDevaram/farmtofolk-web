@@ -5,8 +5,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { Card, ErrorState, LoadingState } from "@/components/admin/AdminPrimitives";
+import Link from "next/link";
 import { dashboardApi } from "@/lib/admin-api";
 import type { DashboardVerificationItem } from "@/types/admin";
+import { BRAND_NAME } from "@/lib/constants";
 
 function SummaryMetric({
   label,
@@ -84,13 +86,18 @@ export function FieldDashboardView() {
         <header className="flex items-center gap-3 text-[var(--ftf-green-900)]">
           <LeafMark className="h-11 w-11" />
           <div>
-            <p className="ftf-display text-2xl font-bold">FarmToFolk Field</p>
+            <p className="ftf-display text-2xl font-bold">{BRAND_NAME} Field</p>
             <p className="text-sm text-[var(--ftf-muted)]">Verification workspace</p>
           </div>
         </header>
 
         <div className="mt-8 border-b border-[var(--ftf-border)] pb-5">
-          <h1 className="text-3xl font-bold sm:text-4xl">Verifier Dashboard</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-3xl font-bold sm:text-4xl">Verifier Dashboard</h1>
+            <Link className="rounded-xl bg-[var(--ftf-green-900)] px-4 py-2 text-sm font-bold text-white" href="/admin/batches/new">
+              Create Batch
+            </Link>
+          </div>
           <p className="mt-2 text-[var(--ftf-muted)]">
             Here are your verification tasks and farm visits.
           </p>
