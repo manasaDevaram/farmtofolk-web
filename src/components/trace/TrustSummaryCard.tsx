@@ -5,10 +5,10 @@ import { CheckIcon } from "./trace-utils";
 const badges = [
   "Farmer Verified",
   "Farm Verified",
-  "Evidence Available",
+  "Certification Available",
   "Transparent Pricing",
   "Traceable Batch",
-  "Data Integrity Ready",
+  "Residue Free Tested",
 ];
 
 export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
@@ -19,11 +19,11 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
     active.add("Farm Verified");
   }
   if (trace.verificationEvidence?.some((item) => item.isPublic)) {
-    active.add("Evidence Available");
+    active.add("Certification Available");
   }
-  if (trace.batch?.consumerPricePerUnit != null) active.add("Transparent Pricing");
+  if (trace.priceBreakdown) active.add("Transparent Pricing");
   if (trace.batch || trace.qrCode) active.add("Traceable Batch");
-  active.add("Data Integrity Ready");
+  if (trace.verification?.chemicalFreeClaim) active.add("Residue Free Tested");
   const score = Math.round((active.size / badges.length) * 100);
 
   return (

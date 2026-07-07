@@ -1752,6 +1752,38 @@ function BatchUsagePanel({
   );
 }
 
+type PriceFieldKey =
+  | "consumerPrice"
+  | "farmerPrice"
+  | "wastageCost"
+  | "packagingCost"
+  | "operationalCost";
+
+const priceFieldLabels: Record<PriceFieldKey, string> = {
+  consumerPrice: "Consumer price",
+  farmerPrice: "Farmer price",
+  wastageCost: "Wastage",
+  packagingCost: "Packaging",
+  operationalCost: "Operation cost",
+};
+
+const allPriceFields: PriceFieldKey[] = [
+  "consumerPrice",
+  "farmerPrice",
+  "wastageCost",
+  "packagingCost",
+  "operationalCost",
+];
+
+function visiblePriceFields(initial: PriceBreakdown | null): PriceFieldKey[] {
+  if (!initial) return [];
+
+  return allPriceFields.filter((key) => {
+    const value = initial[key];
+    return value != null && value > 0;
+  });
+}
+
 function PriceBreakdownPanel({
   batch,
   initial,
@@ -1761,17 +1793,38 @@ function PriceBreakdownPanel({
   initial: PriceBreakdown | null;
   onSaved: (value: PriceBreakdown) => void;
 }) {
+  const [expanded, setExpanded] = useState(Boolean(initial));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [visibleFields, setVisibleFields] = useState<PriceFieldKey[]>(() =>
+    visiblePriceFields(initial),
+  );
   const [form, setForm] = useState<PriceBreakdownPayload>({
-    consumerPrice: initial?.consumerPrice ?? batch.consumerPricePerUnit,
-    farmerPrice: initial?.farmerPrice ?? batch.farmerPricePerUnit,
+    consumerPrice: initial?.consumerPrice ?? 0,
+    farmerPrice: initial?.farmerPrice ?? 0,
     wastageCost: initial?.wastageCost ?? 0,
     packagingCost: initial?.packagingCost ?? 0,
-    operationalCost: initial?.operationalCost ?? batch.operationalCostPerUnit,
+    operationalCost: initial?.operationalCost ?? 0,
     currency: initial?.currency ?? "INR",
     priceUnit: initial?.priceUnit ?? batch.unit,
   });
+
+  useEffect(() => {
+    if (!initial) return;
+
+    setExpanded(true);
+    setVisibleFields(visiblePriceFields(initial));
+    setForm({
+      consumerPrice: initial.consumerPrice ?? 0,
+      farmerPrice: initial.farmerPrice ?? 0,
+      wastageCost: initial.wastageCost ?? 0,
+      packagingCost: initial.packagingCost ?? 0,
+      operationalCost: initial.operationalCost ?? 0,
+      currency: initial.currency ?? "INR",
+      priceUnit: initial.priceUnit ?? batch.unit,
+    });
+  }, [batch.unit, initial]);
+  const remainingFields = allPriceFields.filter((key) => !visibleFields.includes(key));
   const margin =
     form.consumerPrice -
     form.farmerPrice -
@@ -1779,15 +1832,23 @@ function PriceBreakdownPanel({
     form.packagingCost -
     form.operationalCost;
 
-  function numberField(
-    label: string,
-    key:
-      | "consumerPrice"
-      | "farmerPrice"
-      | "wastageCost"
-      | "packagingCost"
-      | "operationalCost",
-  ) {
+  function startAddingBreakdown() {
+    setExpanded(true);
+    if (visibleFields.length === 0) {
+      setVisibleFields(["consumerPrice"]);
+    }
+  }
+
+  function addPriceField(key: PriceFieldKey) {
+    setVisibleFields((current) => [...current, key]);
+  }
+
+  function removePriceField(key: PriceFieldKey) {
+    setVisibleFields((current) => current.filter((field) => field !== key));
+    setForm((current) => ({ ...current, [key]: 0 }));
+  }
+
+  function numberField(label: string, key: PriceFieldKey) {
     return (
       <label className="text-sm font-bold text-stone-700">
         {label}
@@ -1811,6 +1872,8 @@ function PriceBreakdownPanel({
     try {
       const saved = await priceBreakdownApi.save(batch.id, form);
       onSaved(saved);
+      setExpanded(true);
+      setVisibleFields(visiblePriceFields(saved));
       setMessage("Price breakdown saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save price breakdown.");
@@ -1819,23 +1882,86 @@ function PriceBreakdownPanel({
     }
   }
 
+  if (!expanded) {
+    return (
+      <Card>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black">Price Breakdown</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Optional per-batch pricing shown on the public trace page.
+            </p>
+          </div>
+          <button
+            aria-label="Add price breakdown"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-emerald-200 bg-emerald-50 text-2xl font-black text-emerald-900 transition hover:bg-emerald-100"
+            onClick={startAddingBreakdown}
+            type="button"
+          >
+            +
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card>
-      <h2 className="text-xl font-black">Price Breakdown</h2>
-      <p className="mt-1 text-sm text-stone-600">All amounts are per {form.priceUnit}.</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {numberField("Consumer price", "consumerPrice")}
-        {numberField("Farmer price", "farmerPrice")}
-        {numberField("Wastage", "wastageCost")}
-        {numberField("Packaging", "packagingCost")}
-        {numberField("Operation cost", "operationalCost")}
-        <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
-          <span className="block font-bold">Margin</span>
-          <strong className="text-2xl">₹{margin.toFixed(2)}</strong>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black">Price Breakdown</h2>
+          <p className="mt-1 text-sm text-stone-600">All amounts are per {form.priceUnit}.</p>
         </div>
+        {remainingFields.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {remainingFields.map((key) => (
+              <button
+                className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-900 transition hover:bg-emerald-100"
+                key={key}
+                onClick={() => addPriceField(key)}
+                type="button"
+              >
+                <span aria-hidden="true">+</span>
+                {priceFieldLabels[key]}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {visibleFields.map((key) => (
+          <div className="relative" key={key}>
+            {numberField(priceFieldLabels[key], key)}
+            {key !== "consumerPrice" ? (
+              <button
+                aria-label={`Remove ${priceFieldLabels[key]}`}
+                className="absolute right-0 top-0 text-xs font-bold text-stone-500 hover:text-stone-800"
+                onClick={() => removePriceField(key)}
+                type="button"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+        ))}
+        {visibleFields.length === 0 ? (
+          <p className="text-sm text-stone-600">
+            Use the plus buttons above to add the price fields you want shown on the trace pie
+            chart.
+          </p>
+        ) : null}
+        {visibleFields.length > 0 ? (
+          <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
+            <span className="block font-bold">Margin</span>
+            <strong className="text-2xl">₹{margin.toFixed(2)}</strong>
+          </div>
+        ) : null}
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <Button disabled={saving || margin < 0} onClick={() => void save()}>
+        <Button
+          disabled={saving || visibleFields.length === 0 || margin < 0}
+          onClick={() => void save()}
+        >
           {saving ? "Saving..." : "Save Breakdown"}
         </Button>
         {message ? <p className="text-sm font-bold text-stone-600">{message}</p> : null}

@@ -8,12 +8,14 @@ export function SignedMedia({
   className,
   kind,
   onReload,
+  presentation = "default",
   src,
 }: {
   alt: string;
   className: string;
   kind: "image" | "video";
   onReload?: () => void;
+  presentation?: "default" | "background";
   src?: string | null;
 }) {
   const cleanUrl = cleanMediaUrl(src);
@@ -36,9 +38,22 @@ export function SignedMedia({
     );
   }
 
-  return kind === "video" ? (
-    <video className={className} controls onError={() => setFailedUrl(cleanUrl)} src={cleanUrl} />
-  ) : (
+  if (kind === "video") {
+    return (
+      <video
+        autoPlay={presentation === "background"}
+        className={className}
+        controls={presentation === "default"}
+        loop={presentation === "background"}
+        muted={presentation === "background"}
+        onError={() => setFailedUrl(cleanUrl)}
+        playsInline
+        src={cleanUrl}
+      />
+    );
+  }
+
+  return (
     // Pre-signed URLs are supplied by the API and may use changing external S3 hosts.
     // eslint-disable-next-line @next/next/no-img-element
     <img alt={alt} className={className} onError={() => setFailedUrl(cleanUrl)} src={cleanUrl} />

@@ -26,7 +26,6 @@ export function ProductDetailsCard({
                   : null
               }
             />
-            <FieldRow label="Harvest Date" value={formatDate(batch?.harvestDate)} />
             <FieldRow label="Received Date" value={formatDate(batch?.receivedDate)} />
             <FieldRow label="Status" value={toTitleCase(batch?.status)} />
           </dl>
@@ -61,13 +60,8 @@ export function ProductDetailsCard({
           </div>
         </div>
       }
-      summary={
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <p>Quick details about this produce</p>
-          <p className="font-bold text-stone-950">Harvested on {formatDate(batch?.harvestDate)}</p>
-        </div>
-      }
-      title="About This Product"
+      summary={<p>Quick details about this crop</p>}
+      title="About This Crop"
     />
   );
 }

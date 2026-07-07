@@ -142,13 +142,34 @@ describe("public trace page", () => {
     expect(screen.getByText(/practicing natural farming for over 12 years/i)).toBeInTheDocument();
   });
 
-  it("shows only the public price summary", () => {
-    render(<MoneyBreakdownCard batch={sampleTrace.batch} />);
+  it("shows only saved price breakdown segments in the pie chart", () => {
+    render(
+      <MoneyBreakdownCard
+        batch={sampleTrace.batch}
+        priceBreakdown={{
+          consumerPrice: 80,
+          farmerPrice: 52,
+          wastageCost: 0,
+          packagingCost: 0,
+          operationalCost: 28,
+          margin: 0,
+          priceUnit: "kg",
+        }}
+      />,
+    );
 
-    expect(screen.getByText(/You paid/i)).toBeInTheDocument();
-    expect(screen.getByText(/Farmer received/i)).toBeInTheDocument();
-    expect(screen.getByText(/Farm-to-consumer cost/i)).toBeInTheDocument();
-    expect(screen.queryByText(/margin/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Where Your Money Goes/i }));
+
+    expect(screen.getByText("Farmer")).toBeInTheDocument();
+    expect(screen.getByText("Operations")).toBeInTheDocument();
+    expect(screen.queryByText("Wastage")).not.toBeInTheDocument();
+    expect(screen.queryByText("Packaging")).not.toBeInTheDocument();
+  });
+
+  it("hides price breakdown card when no saved breakdown exists", () => {
+    const { container } = render(<MoneyBreakdownCard batch={sampleTrace.batch} />);
+
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("renders public verification evidence when available", () => {
@@ -290,7 +311,7 @@ describe("public trace page", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /About This Product/i }));
+    fireEvent.click(screen.getByRole("button", { name: /About This Crop/i }));
 
     expect(screen.getByText("Desi Hybrid")).toBeInTheDocument();
     expect(screen.getByText("Packed")).toBeInTheDocument();
@@ -298,14 +319,15 @@ describe("public trace page", () => {
     expect(screen.getByText("Mysore")).toBeInTheDocument();
   });
 
-  it("renders trust badges without showing an arbitrary numeric score", () => {
+  it("renders trust badges with updated labels", () => {
     render(<TrustSummaryCard trace={sampleTrace} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Trust Summary/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Trust Score/i }));
 
     expect(screen.getByText("Farmer Verified")).toBeInTheDocument();
-    expect(screen.getByText("Data Integrity Ready")).toBeInTheDocument();
-    expect(screen.queryByText(/94\s*\/\s*100/)).not.toBeInTheDocument();
+    expect(screen.getByText("Residue Free Tested")).toBeInTheDocument();
+    expect(screen.queryByText("Data Integrity Ready")).not.toBeInTheDocument();
+    expect(screen.queryByText("Evidence Available")).not.toBeInTheDocument();
   });
 
   it("renders error state when API fails", () => {

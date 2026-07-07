@@ -12,6 +12,14 @@ type Breakdown = {
   priceUnit: string;
 };
 
+const breakdownItems = [
+  { color: "#43a72d", key: "farmerPrice" as const, label: "Farmer" },
+  { color: "#f59e0b", key: "wastageCost" as const, label: "Wastage" },
+  { color: "#3b82f6", key: "packagingCost" as const, label: "Packaging" },
+  { color: "#8b5cf6", key: "operationalCost" as const, label: "Operations" },
+  { color: "#f97316", key: "margin" as const, label: "Margin" },
+];
+
 export function MoneyBreakdownCard({
   batch,
   priceBreakdown,
@@ -19,31 +27,21 @@ export function MoneyBreakdownCard({
   batch?: PublicTraceBatch | null;
   priceBreakdown?: Breakdown | null;
 }) {
-  const consumerPrice = priceBreakdown?.consumerPrice ?? batch?.consumerPricePerUnit;
-  const farmerPrice = priceBreakdown?.farmerPrice ?? batch?.farmerPricePerUnit;
-  const operationalCost =
-    priceBreakdown?.operationalCost ??
-    batch?.operationalCostPerUnit ??
-    batch?.farmToConsumerCostPerUnit;
-  const wastageCost = priceBreakdown?.wastageCost ?? 0;
-  const packagingCost = priceBreakdown?.packagingCost ?? 0;
-  const margin =
-    priceBreakdown?.margin ??
-    (consumerPrice ?? 0) -
-      (farmerPrice ?? 0) -
-      wastageCost -
-      packagingCost -
-      (operationalCost ?? 0);
-  const unit = priceBreakdown?.priceUnit || batch?.unit || "unit";
+  if (!priceBreakdown) {
+    return null;
+  }
+
+  const consumerPrice = priceBreakdown.consumerPrice;
+  const unit = priceBreakdown.priceUnit || batch?.unit || "unit";
+  const items = breakdownItems
+    .map((item) => ({
+      ...item,
+      value: priceBreakdown[item.key] ?? 0,
+    }))
+    .filter((item) => item.value > 0);
+  const farmerPrice = priceBreakdown.farmerPrice ?? 0;
   const farmerShare =
     consumerPrice && farmerPrice ? Math.round((farmerPrice / consumerPrice) * 100) : 0;
-  const items = [
-    { color: "#43a72d", label: "Farmer", value: farmerPrice ?? 0 },
-    { color: "#f59e0b", label: "Wastage", value: wastageCost },
-    { color: "#3b82f6", label: "Packaging", value: packagingCost },
-    { color: "#8b5cf6", label: "Operations", value: operationalCost ?? 0 },
-    { color: "#f97316", label: "Margin", value: margin },
-  ];
   let runningPercent = 0;
   const chartStops = items.map((item) => {
     const start = runningPercent;
@@ -66,7 +64,12 @@ export function MoneyBreakdownCard({
           <div className="grid items-center gap-8 lg:grid-cols-[0.8fr_1.2fr]">
             <div
               className="relative mx-auto grid h-44 w-44 place-items-center rounded-full"
-              style={{ background: `conic-gradient(${chartStops.join(", ")})` }}
+              style={{
+                background:
+                  chartStops.length > 0
+                    ? `conic-gradient(${chartStops.join(", ")})`
+                    : "conic-gradient(#e7e5e4 0% 100%)",
+              }}
             >
               <div className="grid h-28 w-28 place-items-center rounded-full bg-white text-center shadow-inner">
                 <div>
@@ -104,9 +107,11 @@ export function MoneyBreakdownCard({
               </dl>
             </div>
           </div>
-          <div className="mt-5 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-            <strong>Your impact:</strong> this purchase sends {farmerShare}% directly to the farmer.
-          </div>
+          {farmerShare > 0 ? (
+            <div className="mt-5 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+              <strong>Your impact:</strong> this purchase sends {farmerShare}% directly to the farmer.
+            </div>
+          ) : null}
         </div>
       }
       summary={<p>Transparent distribution of the retail price.</p>}

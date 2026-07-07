@@ -70,7 +70,15 @@ export function FarmerForm({
     }
     setSaving(true);
     try {
-      await onSubmit({ ...form, phone: phoneDigits }, active);
+      await onSubmit(
+        {
+          ...form,
+          phone: phoneDigits,
+          introVideoUrl: null,
+          profilePhotoUrl: null,
+        },
+        active,
+      );
       setState({ success: "Farmer saved successfully." });
     } catch (error) {
       setState({ error: error instanceof Error ? error.message : "Save failed." });
