@@ -15,7 +15,10 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
   const active = new Set<string>();
 
   if (trace.farmer) active.add("Farmer Verified");
-  if (trace.farm) active.add("Farm Verified");
+  const verificationStatus = trace.latestVerification?.status?.toUpperCase();
+  if (verificationStatus === "VERIFIED" || verificationStatus === "APPROVED") {
+    active.add("Farm Verified");
+  }
   if (trace.verificationEvidence?.some((item) => item.isPublic)) {
     active.add("Evidence Available");
   }

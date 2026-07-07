@@ -45,10 +45,33 @@ export function VerificationCard({
   const checklist = parseChecklist(verification?.checklistJson);
   const verificationDate = verification?.verificationDate;
   const publicEvidence = evidence?.filter((item) => item.isPublic !== false) ?? [];
+  const status = verification?.status?.trim().toUpperCase();
+  const isVerified = status === "VERIFIED" || status === "APPROVED";
+  const isPending = status === "PENDING";
+  const isRejected = status === "REJECTED";
+  const chemicalFreeValue =
+    verification?.chemicalFreeClaim == null
+      ? null
+      : isPending
+        ? verification.chemicalFreeClaim
+          ? "Claimed — pending review"
+          : "Not claimed"
+        : verification.chemicalFreeClaim
+          ? "Yes"
+          : "No";
+  const agroecologyValue = isPending
+    ? "Pending review"
+    : isRejected
+      ? "Not verified"
+      : verification?.agroecologyVerified == null
+        ? null
+        : verification.agroecologyVerified
+          ? "Yes"
+          : "No";
 
   return (
     <TraceAccordionCard
-      accent="bg-emerald-50 text-emerald-800"
+      accent={isVerified ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}
       icon={<LeafIcon className="h-9 w-9" />}
       openContent={
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.2fr_1fr]">
@@ -60,25 +83,16 @@ export function VerificationCard({
             />
             <FieldRow
               label="Chemical-Free Claim"
-              value={
-                verification?.chemicalFreeClaim == null
-                  ? null
-                  : verification.chemicalFreeClaim
-                    ? "Yes"
-                    : "No"
-              }
+              value={chemicalFreeValue}
             />
             <FieldRow
               label="Agroecology Verified"
-              value={
-                verification?.agroecologyVerified == null
-                  ? null
-                  : verification.agroecologyVerified
-                    ? "Yes"
-                    : "No"
-              }
+              value={agroecologyValue}
             />
-            <FieldRow label="Verification Date" value={formatDate(verificationDate)} />
+            <FieldRow
+              label={isVerified ? "Verification Date" : "Submitted Date"}
+              value={formatDate(verificationDate)}
+            />
             <FieldRow label="Next Due" value={formatDate(verification?.nextVerificationDue)} />
           </dl>
           <div>
@@ -87,10 +101,14 @@ export function VerificationCard({
               <ul className="grid gap-2 sm:grid-cols-2">
                 {checklist.map((item) => (
                   <li
-                    className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-950"
+                    className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold ${isVerified ? "bg-emerald-50 text-emerald-950" : "bg-amber-50 text-amber-950"}`}
                     key={item}
                   >
-                    <CheckIcon className="h-4 w-4 text-emerald-700" />
+                    {isVerified ? (
+                      <CheckIcon className="h-4 w-4 text-emerald-700" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    )}
                     {item}
                   </li>
                 ))}
@@ -133,9 +151,17 @@ export function VerificationCard({
             Latest status:{" "}
             <span className="font-bold text-stone-950">{toTitleCase(verification?.status)}</span>
           </p>
-          <p className="mt-1 inline-flex items-center gap-2 font-bold text-emerald-800">
-            <CheckIcon className="h-4 w-4" />
-            Verified on {formatDate(verificationDate)}
+          <p
+            className={`mt-1 inline-flex items-center gap-2 font-bold ${isVerified ? "text-emerald-800" : isRejected ? "text-red-700" : "text-amber-800"}`}
+          >
+            {isVerified ? <CheckIcon className="h-4 w-4" /> : <span aria-hidden="true">●</span>}
+            {isVerified
+              ? `Verified on ${formatDate(verificationDate)}`
+              : isRejected
+                ? `Not approved · reviewed on ${formatDate(verificationDate)}`
+                : isPending
+                  ? `Submitted on ${formatDate(verificationDate)} · awaiting review`
+                  : `Recorded on ${formatDate(verificationDate)}`}
           </p>
         </>
       }

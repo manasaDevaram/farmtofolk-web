@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SignedMedia } from "@/components/SignedMedia";
 import {
   batchApi,
@@ -52,6 +52,7 @@ import {
   ButtonLink,
   Card,
   ConfirmDialog,
+  CreatableCombobox,
   EmptyState,
   ErrorState,
   InfoGrid,
@@ -1202,6 +1203,7 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [batch, setBatch] = useState<Batch | null>(null);
+  const [batchOptions, setBatchOptions] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -1209,11 +1211,13 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
     Promise.all([
       farmerApi.list(),
       listAllFarms(),
+      batchApi.list(),
       batchId ? batchApi.get(batchId) : Promise.resolve(null),
     ])
-      .then(([nextFarmers, nextFarms, nextBatch]) => {
+      .then(([nextFarmers, nextFarms, nextBatchOptions, nextBatch]) => {
         setFarmers(nextFarmers);
         setFarms(nextFarms);
+        setBatchOptions(nextBatchOptions);
         setBatch(nextBatch);
       })
       .catch((err) => setError(err.message))
@@ -1227,11 +1231,15 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
       {error ? <ErrorState message={error} /> : null}
       {!loading && !error ? (
         <BatchForm
+          cropOptions={batchOptions.map((item) => item.cropName)}
           farmers={farmers}
           farms={farms}
           initial={batch}
           lockedFarmerId={lockedFarmerId}
           lockedFarmId={lockedFarmId}
+          varietyOptions={batchOptions
+            .map((item) => item.variety)
+            .filter((value): value is string => Boolean(value))}
           onSubmit={async (payload: BatchPayload) => {
             const saved = batchId
               ? await batchApi.update(batchId, payload)
@@ -1409,22 +1417,14 @@ function TraceEventPanel({
         ))}
       </div>
       <div className="mt-4 grid gap-2">
-        <label className="text-sm font-bold text-stone-700" htmlFor="trace-event-type">
-          Event type
-        </label>
-        <input
-          className={inputClass}
-          id="trace-event-type"
-          list="trace-event-type-options"
+        <CreatableCombobox
+          label="Event type"
+          onChange={(eventType) => setForm({ ...form, eventType })}
+          options={eventTypes}
           placeholder="Pick a type or enter a new one"
+          required
           value={form.eventType}
-          onChange={(event) => setForm({ ...form, eventType: event.target.value })}
         />
-        <datalist id="trace-event-type-options">
-          {eventTypes.map((type) => (
-            <option key={type} value={type} />
-          ))}
-        </datalist>
         <p className="text-xs text-stone-500">
           Choose an existing option or type a new event. New types are saved for future use.
         </p>
@@ -1755,6 +1755,9 @@ function QrPanel({
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
   const [currentQr, setCurrentQr] = useState(qr);
+  const [pollCycle, setPollCycle] = useState(0);
+  const [pollExhausted, setPollExhausted] = useState(false);
+  const autoTriggered = useRef(false);
   const traceUrl = currentQr ? `${origin}/trace/${currentQr.publicToken}` : "";
 
   useEffect(() => {
@@ -1765,21 +1768,35 @@ function QrPanel({
 
   useEffect(() => {
     if (!currentQr || currentQr.qrImageUrl) return;
+    setPollExhausted(false);
+    if (!autoTriggered.current) {
+      autoTriggered.current = true;
+      setSaving(true);
+      void qrApi
+        .create(batchId)
+        .then(setCurrentQr)
+        .finally(() => setSaving(false));
+    }
     let attempts = 0;
     const timer = window.setInterval(() => {
       attempts += 1;
       void qrApi.get(batchId).then((nextQr) => {
         if (nextQr) setCurrentQr(nextQr);
-        if (nextQr?.qrImageUrl || attempts >= 10) window.clearInterval(timer);
+        if (nextQr?.qrImageUrl || attempts >= 10) {
+          window.clearInterval(timer);
+          if (!nextQr?.qrImageUrl) setPollExhausted(true);
+        }
       });
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [batchId, currentQr?.id, currentQr?.qrImageUrl]);
+  }, [batchId, currentQr?.id, currentQr?.qrImageUrl, pollCycle]);
 
   async function generate() {
     setSaving(true);
+    setPollExhausted(false);
     const generated = await qrApi.create(batchId).finally(() => setSaving(false));
     setCurrentQr(generated);
+    setPollCycle((cycle) => cycle + 1);
     if (generated.qrImageUrl) onSaved();
   }
 
@@ -1813,14 +1830,20 @@ function QrPanel({
               />
             </div>
           ) : (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              <p className="font-black">QR image is processing</p>
-              <p className="mt-1">
-                This updates automatically. Retry if it takes longer than expected.
-              </p>
-              <Button disabled={saving} onClick={() => void generate()} variant="secondary">
-                {saving ? "Retrying..." : "Retry"}
-              </Button>
+            <div className="flex min-h-48 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              {pollExhausted ? (
+                <div className="text-center">
+                  <p className="font-black">QR generation needs another attempt</p>
+                  <Button disabled={saving} onClick={() => void generate()} variant="secondary">
+                    {saving ? "Retrying..." : "Retry generation"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <span className="mx-auto block h-9 w-9 animate-spin rounded-full border-4 border-amber-200 border-t-amber-800" />
+                  <p className="mt-3 font-bold">Generating QR code…</p>
+                </div>
+              )}
             </div>
           )}
           <p className="text-sm font-bold text-stone-600">Public trace URL</p>

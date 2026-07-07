@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { BotanicalCorner, EmptyBasket, LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { clearSession, getSessionUser } from "@/lib/auth-session";
 import { formatUserRole } from "@/lib/user-role";
@@ -295,6 +295,95 @@ export function Field({
 
 export const inputClass =
   "ftf-focus min-h-11 w-full rounded-[var(--ftf-radius-input)] border border-[var(--ftf-border)] bg-white/70 px-3 py-2 text-sm outline-none transition focus:border-[var(--ftf-green-500)]";
+
+export function CreatableCombobox({
+  label,
+  onChange,
+  options,
+  placeholder,
+  required,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+  value: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const normalizedOptions = useMemo(
+    () => [...new Set(options.filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [options],
+  );
+  const visibleOptions = normalizedOptions.filter((option) =>
+    option.toLowerCase().includes(value.trim().toLowerCase()),
+  );
+  const isNew =
+    value.trim() &&
+    !normalizedOptions.some((option) => option.toLowerCase() === value.trim().toLowerCase());
+
+  return (
+    <Field label={label} required={required}>
+      <div className="relative" onBlur={() => window.setTimeout(() => setOpen(false), 120)}>
+        <div className="flex rounded-[var(--ftf-radius-input)] border border-[var(--ftf-border)] bg-white/70 focus-within:border-[var(--ftf-green-500)] focus-within:ring-2 focus-within:ring-[var(--ftf-sage)]">
+          <input
+            aria-autocomplete="list"
+            aria-expanded={open}
+            className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none"
+            onChange={(event) => {
+              onChange(event.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            placeholder={placeholder}
+            role="combobox"
+            value={value}
+          />
+          <button
+            aria-label={`Show ${label} options`}
+            className="min-h-11 border-l border-[var(--ftf-border)] px-3 text-[var(--ftf-green-900)]"
+            onClick={() => setOpen((current) => !current)}
+            type="button"
+          >
+            <span className={`block transition ${open ? "rotate-180" : ""}`}>⌄</span>
+          </button>
+        </div>
+        {open ? (
+          <div className="absolute z-40 mt-2 max-h-60 w-full overflow-auto rounded-2xl border border-[var(--ftf-border)] bg-white p-2 shadow-[0_18px_45px_rgba(45,43,38,.18)]">
+            {isNew ? (
+              <button
+                className="mb-1 w-full rounded-xl bg-emerald-50 px-3 py-2 text-left text-sm font-bold text-emerald-900 hover:bg-emerald-100"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                Add “{value.trim()}”
+              </button>
+            ) : null}
+            {visibleOptions.map((option) => (
+              <button
+                className={`w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[var(--ftf-sage)] ${option === value ? "bg-[var(--ftf-sage)] font-bold" : ""}`}
+                key={option}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option);
+                  setOpen(false);
+                }}
+                type="button"
+              >
+                {option}
+              </button>
+            ))}
+            {!visibleOptions.length && !isNew ? (
+              <p className="px-3 py-3 text-sm text-[var(--ftf-muted)]">No saved options yet.</p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Field>
+  );
+}
 
 export function StatusBadge({ active }: { active: boolean }) {
   return (
