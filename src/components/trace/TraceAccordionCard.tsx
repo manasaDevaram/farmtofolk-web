@@ -24,7 +24,7 @@ export function TraceAccordionCard({
   const contentId = useId();
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--ftf-border)] bg-white shadow-[0_6px_20px_rgba(65,49,29,0.07)]">
+    <section className="trace-card overflow-hidden rounded-2xl border border-[var(--ftf-border)] bg-white shadow-[0_8px_24px_rgba(13,74,48,0.07)]">
       <button
         aria-controls={contentId}
         aria-expanded={isOpen}

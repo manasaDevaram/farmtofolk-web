@@ -30,8 +30,8 @@ export default async function PublicTracePage({
   }
 
   return (
-    <main className="ftf-paper min-h-screen px-3 py-3 text-[var(--ftf-text)] sm:px-6 sm:py-6">
-      <div className="mx-auto max-w-[1100px] rounded-[28px] border border-[var(--ftf-border)] bg-[rgba(252,250,245,.88)] p-4 shadow-[0_24px_70px_rgba(65,49,29,0.14)] backdrop-blur sm:p-8">
+    <main className="trace-page min-h-screen px-3 py-3 text-[var(--ftf-text)] sm:px-6 sm:py-6">
+      <div className="trace-surface mx-auto max-w-[1100px] rounded-[30px] border border-[var(--ftf-border)] p-4 backdrop-blur sm:p-8">
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 text-[var(--ftf-green-900)]">
