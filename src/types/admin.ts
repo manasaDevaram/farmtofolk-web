@@ -155,7 +155,6 @@ export type Batch = {
 };
 
 export type BatchPayload = {
-  batchCode?: string;
   farmerId: string;
   farmId: string;
   cropName: string;
@@ -166,8 +165,6 @@ export type BatchPayload = {
   receivedDate: string;
   farmerPricePerUnit: number;
   paymentStatus: string;
-  consumerPricePerUnit: number;
-  operationalCostPerUnit: number;
   status: string;
 };
 

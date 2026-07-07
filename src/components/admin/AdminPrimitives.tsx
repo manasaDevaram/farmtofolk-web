@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { BotanicalCorner, EmptyBasket, LeafMark } from "@/components/assets/FarmToFolkAssets";
 import { clearSession, getSessionUser } from "@/lib/auth-session";
 import { formatUserRole } from "@/lib/user-role";
@@ -217,8 +217,32 @@ function buttonClass(variant: "primary" | "secondary" | "danger") {
   return `${base} bg-[var(--ftf-green-900)] text-white hover:bg-[var(--ftf-green-700)]`;
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`ftf-card p-5 ${className}`}>{children}</section>;
+export function Card({
+  children,
+  className = "",
+  onClick,
+  onKeyDown,
+  role,
+  tabIndex,
+}: {
+  children: ReactNode;
+  className?: string;
+  onClick?: () => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
+  role?: string;
+  tabIndex?: number;
+}) {
+  return (
+    <section
+      className={`ftf-card p-5 ${className}`}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      role={role}
+      tabIndex={tabIndex}
+    >
+      {children}
+    </section>
+  );
 }
 
 export function LoadingState({ label = "Loading..." }: { label?: string }) {

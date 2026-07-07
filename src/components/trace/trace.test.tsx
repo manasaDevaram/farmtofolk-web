@@ -157,7 +157,7 @@ describe("public trace page", () => {
     expect(screen.queryByText(/margin/i)).not.toBeInTheDocument();
   });
 
-  it("parses verification checklist JSON and renders observations", () => {
+  it("renders public verification evidence when available", () => {
     render(
       <VerificationCard
         evidence={[
@@ -186,41 +186,62 @@ describe("public trace page", () => {
             verificationId: "verification-1",
           },
         ]}
-        verification={{
-          ...sampleTrace.latestVerification!,
-          checklistJson: JSON.stringify({
-            noSyntheticPesticides: true,
-            waterConservation: true,
-          }),
-          observations: "No synthetic chemicals observed.",
-        }}
+        verification={sampleTrace.latestVerification}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Agroecology Verification/i }));
 
-    expect(screen.getByText("No Synthetic Pesticides")).toBeInTheDocument();
-    expect(screen.getByText("Water Conservation")).toBeInTheDocument();
-    expect(screen.getByText("No synthetic chemicals observed.")).toBeInTheDocument();
+    expect(screen.getByText(/Last verified on/i)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Public compost evidence" })).toBeInTheDocument();
     expect(
       screen.queryByRole("img", { name: "Private internal evidence" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Pending/i)).not.toBeInTheDocument();
   });
 
-  it("shows checklist fallback when checklist JSON is invalid", () => {
+  it("hides verification card when only pending verification exists", () => {
     render(
       <VerificationCard
         verification={{
           ...sampleTrace.latestVerification!,
-          checklistJson: "{not-json",
+          status: "PENDING",
         }}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Agroecology Verification/i }));
+    expect(screen.queryByRole("button", { name: /Agroecology Verification/i })).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByText("No checklist details available.")).toBeInTheDocument();
+  it("hides verification card when verified but no public evidence exists", () => {
+    render(<VerificationCard verification={sampleTrace.latestVerification} evidence={[]} />);
+
+    expect(screen.queryByRole("button", { name: /Agroecology Verification/i })).not.toBeInTheDocument();
+  });
+
+  it("shows last verified summary when public evidence exists", () => {
+    render(
+      <VerificationCard
+        evidence={[
+          {
+            caption: "Field visit photo",
+            capturedAt: null,
+            createdAt: "2026-05-17T00:00:00Z",
+            fileHash: null,
+            fileType: "IMAGE",
+            fileUrl: "https://example.com/public.jpg",
+            id: "evidence-1",
+            isPublic: true,
+            uploadedByUserId: null,
+            verificationId: "verification-1",
+          },
+        ]}
+        verification={sampleTrace.latestVerification}
+      />,
+    );
+
+    expect(screen.getByText(/Last verified on/i)).toBeInTheDocument();
+    expect(screen.getByText(/verification document/i)).toBeInTheDocument();
   });
 
   it("shows farm media preview count for hidden media", () => {

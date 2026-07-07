@@ -15,11 +15,15 @@ export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
   const active = new Set<string>();
 
   if (trace.farmer) active.add("Farmer Verified");
+  const hasPublicVerificationEvidence = trace.verificationEvidence?.some((item) => item.isPublic);
   const verificationStatus = trace.latestVerification?.status?.toUpperCase();
-  if (verificationStatus === "VERIFIED" || verificationStatus === "APPROVED") {
+  if (
+    hasPublicVerificationEvidence &&
+    (verificationStatus === "VERIFIED" || verificationStatus === "APPROVED")
+  ) {
     active.add("Farm Verified");
   }
-  if (trace.verificationEvidence?.some((item) => item.isPublic)) {
+  if (hasPublicVerificationEvidence) {
     active.add("Evidence Available");
   }
   if (trace.batch?.consumerPricePerUnit != null) active.add("Transparent Pricing");

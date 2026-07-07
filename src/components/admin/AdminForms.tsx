@@ -20,14 +20,9 @@ type FarmFormState = Omit<
   sizeAcres: string;
 };
 
-type BatchFormState = Omit<
-  BatchPayload,
-  "quantityReceived" | "farmerPricePerUnit" | "consumerPricePerUnit" | "operationalCostPerUnit"
-> & {
+type BatchFormState = Omit<BatchPayload, "quantityReceived" | "farmerPricePerUnit"> & {
   quantityReceived: string;
   farmerPricePerUnit: string;
-  consumerPricePerUnit: string;
-  operationalCostPerUnit: string;
 };
 
 // FarmerForm validates the required profile fields before calling the backend.
@@ -417,7 +412,6 @@ export function BatchForm({
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState<SubmitState>({});
   const [form, setForm] = useState<BatchFormState>({
-    batchCode: initial?.batchCode ?? "",
     cropName: initial?.cropName ?? "",
     farmId: initial?.farmId ?? lockedFarmId ?? "",
     farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
@@ -427,10 +421,6 @@ export function BatchForm({
     farmerPricePerUnit:
       initial?.farmerPricePerUnit == null ? "" : String(initial.farmerPricePerUnit),
     paymentStatus: initial?.paymentStatus ?? "UNPAID",
-    consumerPricePerUnit:
-      initial?.consumerPricePerUnit == null ? "" : String(initial.consumerPricePerUnit),
-    operationalCostPerUnit:
-      initial?.operationalCostPerUnit == null ? "" : String(initial.operationalCostPerUnit),
     status: initial?.status ?? "HARVESTED",
     unit: initial?.unit ?? "kg",
     variety: initial?.variety ?? "",
@@ -446,16 +436,6 @@ export function BatchForm({
       setForm((current) => ({ ...current, farmId: "" }));
     }
   }, [form.farmId, selectableFarms]);
-
-  function generateBatchCode() {
-    const crop = (form.cropName || "CROP")
-      .replace(/[^a-z0-9]/gi, "")
-      .toUpperCase()
-      .slice(0, 8);
-    const date = (form.harvestDate || today()).replaceAll("-", "");
-    const suffix = Math.floor(100 + Math.random() * 900);
-    setForm({ ...form, batchCode: `BATCH-${crop}-${date}-${suffix}` });
-  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -474,8 +454,6 @@ export function BatchForm({
     }
     const quantityReceived = Number(form.quantityReceived);
     const farmerPricePerUnit = Number(form.farmerPricePerUnit);
-    const consumerPricePerUnit = Number(form.consumerPricePerUnit);
-    const operationalCostPerUnit = Number(form.operationalCostPerUnit);
     if (!Number.isFinite(quantityReceived) || quantityReceived <= 0) {
       setState({ error: "Quantity received must be positive." });
       return;
@@ -484,22 +462,12 @@ export function BatchForm({
       setState({ error: "Farmer price per unit cannot be negative." });
       return;
     }
-    if (!form.consumerPricePerUnit.trim() || !isNonNegative(consumerPricePerUnit)) {
-      setState({ error: "Consumer price per unit cannot be negative." });
-      return;
-    }
-    if (!form.operationalCostPerUnit.trim() || !isNonNegative(operationalCostPerUnit)) {
-      setState({ error: "Operational cost per unit cannot be negative." });
-      return;
-    }
     setSaving(true);
     try {
       await onSubmit({
         ...form,
         quantityReceived,
         farmerPricePerUnit,
-        consumerPricePerUnit,
-        operationalCostPerUnit,
         variety: form.variety || null,
       });
       setState({ success: "Batch saved successfully." });
@@ -515,18 +483,6 @@ export function BatchForm({
       <Card>
         <h2 className="text-xl font-black">Batch Details</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Batch Code">
-            <div className="flex gap-2">
-              <input
-                className={inputClass}
-                value={form.batchCode}
-                onChange={(event) => setForm({ ...form, batchCode: event.target.value })}
-              />
-              <Button onClick={generateBatchCode} type="button" variant="secondary">
-                Generate
-              </Button>
-            </div>
-          </Field>
           <CreatableCombobox
             label="Crop Name"
             options={cropOptions ?? []}
@@ -639,25 +595,6 @@ export function BatchForm({
               <option value="PAID">PAID</option>
             </select>
           </Field>
-          <TextField
-            label="Consumer Price Per Unit"
-            required
-            type="number"
-            placeholder="Consumer Price Per Unit"
-            value={form.consumerPricePerUnit}
-            onChange={(consumerPricePerUnit) => setForm({ ...form, consumerPricePerUnit })}
-          />
-          <TextField
-            label="Operational Cost Per Unit"
-            required
-            type="number"
-            placeholder="Operational Cost Per Unit"
-            value={form.operationalCostPerUnit}
-            onChange={(operationalCostPerUnit) => setForm({ ...form, operationalCostPerUnit })}
-          />
-          <div className="rounded-2xl bg-stone-50 p-4 text-sm font-bold text-stone-700">
-            Margin per unit: {formatMargin(form)}
-          </div>
         </div>
       </Card>
       <SubmitBar saving={saving} state={state} />
@@ -718,20 +655,4 @@ function optionalNumber(value: string): number | null {
 
 function isNonNegative(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
-}
-
-function formatMargin(form: BatchFormState): string {
-  if (
-    !form.consumerPricePerUnit.trim() ||
-    !form.farmerPricePerUnit.trim() ||
-    !form.operationalCostPerUnit.trim()
-  ) {
-    return "Enter pricing values";
-  }
-  const consumer = Number(form.consumerPricePerUnit);
-  const farmer = Number(form.farmerPricePerUnit);
-  const operational = Number(form.operationalCostPerUnit);
-  return [consumer, farmer, operational].every(Number.isFinite)
-    ? String(consumer - farmer - operational)
-    : "Enter valid pricing values";
 }
