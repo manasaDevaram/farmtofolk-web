@@ -279,6 +279,32 @@ export type QrCode = {
   expiresAt: Nullable<string>;
 };
 
+export type PriceBreakdown = {
+  id: string;
+  batchId: string;
+  consumerPrice: number;
+  farmerPrice: number;
+  wastageCost: number;
+  packagingCost: number;
+  operationalCost: number;
+  margin: number;
+  currency: string;
+  priceUnit: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PriceBreakdownPayload = Pick<
+  PriceBreakdown,
+  | "consumerPrice"
+  | "farmerPrice"
+  | "wastageCost"
+  | "packagingCost"
+  | "operationalCost"
+  | "currency"
+  | "priceUnit"
+>;
+
 export type FarmWithFarmer = Farm & { farmer?: Farmer; farmerName?: string };
 export type BatchWithRelations = Batch & {
   farmer?: Farmer;

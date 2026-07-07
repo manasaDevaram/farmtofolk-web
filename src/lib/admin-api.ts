@@ -16,6 +16,8 @@ import type {
   FarmVerification,
   FarmWithFarmer,
   QrCode,
+  PriceBreakdown,
+  PriceBreakdownPayload,
   TraceEvent,
   TraceEventPayload,
   VerificationEvidence,
@@ -324,6 +326,7 @@ export const traceEventApi = {
       method: "POST",
     }),
   list: (batchId: string) => request<TraceEvent[]>(`/api/batches/${batchId}/trace-events`),
+  types: () => request<string[]>("/api/trace-event-types"),
 };
 
 // QR APIs generate and fetch the public trace token for a batch.
@@ -332,6 +335,20 @@ export const qrApi = {
     request<QrCode>(`/api/batches/${batchId}/qr-code`, { method: "POST" }),
   get: (batchId: string) =>
     request<QrCode | null>(`/api/batches/${batchId}/qr-code`, {}, { optional404: true }),
+};
+
+export const priceBreakdownApi = {
+  get: (batchId: string) =>
+    request<PriceBreakdown | null>(
+      `/api/batches/${batchId}/price-breakdown`,
+      {},
+      { optional404: true },
+    ),
+  save: (batchId: string, payload: PriceBreakdownPayload) =>
+    request<PriceBreakdown>(`/api/batches/${batchId}/price-breakdown`, {
+      body: asJson(payload),
+      method: "PUT",
+    }),
 };
 
 // Aggregate all farms with farmer details for friendly admin lists.

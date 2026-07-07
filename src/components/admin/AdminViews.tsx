@@ -17,6 +17,7 @@ import {
   listAllFarms,
   mediaApi,
   qrApi,
+  priceBreakdownApi,
   traceEventApi,
   verificationApi,
 } from "@/lib/admin-api";
@@ -34,13 +35,15 @@ import type {
   FarmVerification,
   FarmWithFarmer,
   QrCode,
+  PriceBreakdown,
+  PriceBreakdownPayload,
   TraceEvent,
   TraceEventPayload,
   VerificationEvidence,
   VerificationPayload,
 } from "@/types/admin";
 import { cleanMediaUrl } from "@/lib/media-url";
-import { getTraceEventTypes } from "@/lib/trace-event-types";
+import { BRAND_NAME } from "@/lib/constants";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
 import { DashboardSummaryView } from "./AdminDashboardCards";
 import {
@@ -1249,6 +1252,7 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [usage, setUsage] = useState<BatchUsage[]>([]);
   const [qr, setQr] = useState<QrCode | null>(null);
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -1256,11 +1260,12 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
     setLoading(true);
     setError("");
     try {
-      const [nextBatch, nextEvents, nextUsage, nextQr] = await Promise.all([
+      const [nextBatch, nextEvents, nextUsage, nextQr, nextPriceBreakdown] = await Promise.all([
         batchApi.get(batchId),
         traceEventApi.list(batchId),
         batchUsageApi.list(batchId),
         qrApi.get(batchId),
+        priceBreakdownApi.get(batchId),
       ]);
       const [nextFarmer, nextFarm] = await Promise.all([
         farmerApi.get(nextBatch.farmerId),
@@ -1272,6 +1277,7 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
       setFarmer(nextFarmer);
       setUsage(nextUsage);
       setQr(nextQr);
+      setPriceBreakdown(nextPriceBreakdown);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load batch.");
     } finally {
@@ -1323,10 +1329,15 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
               ]}
             />
           </Card>
-          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <PriceBreakdownPanel
+              batch={batch}
+              initial={priceBreakdown}
+              onSaved={setPriceBreakdown}
+            />
+            <QrPanel batchId={batch.id} qr={qr} onSaved={load} />
             <TraceEventPanel batchId={batch.id} events={events} onSaved={load} />
             <BatchUsagePanel batch={batch} onSaved={load} usage={usage} />
-            <QrPanel batchId={batch.id} qr={qr} onSaved={load} />
           </div>
         </>
       ) : null}
@@ -1355,14 +1366,17 @@ function TraceEventPanel({
   const [eventTypes, setEventTypes] = useState<string[]>([]);
 
   useEffect(() => {
-    void getTraceEventTypes().then(setEventTypes);
+    void traceEventApi.types().then(setEventTypes);
   }, []);
 
   async function save() {
+    const eventType = form.eventType.trim();
+    if (!eventType) return;
     setSaving(true);
     await traceEventApi
       .create(batchId, {
         ...form,
+        eventType,
         eventTime: new Date(form.eventTime).toISOString(),
         actorUserId: form.actorUserId || null,
         location: form.location || null,
@@ -1370,6 +1384,13 @@ function TraceEventPanel({
         metadataJson: form.metadataJson || null,
       })
       .finally(() => setSaving(false));
+    const normalizedType = eventType
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "")
+      .toUpperCase();
+    setEventTypes((current) =>
+      current.includes(normalizedType) ? current : [...current, normalizedType].sort(),
+    );
     onSaved();
   }
 
@@ -1388,15 +1409,25 @@ function TraceEventPanel({
         ))}
       </div>
       <div className="mt-4 grid gap-2">
-        <select
+        <label className="text-sm font-bold text-stone-700" htmlFor="trace-event-type">
+          Event type
+        </label>
+        <input
           className={inputClass}
+          id="trace-event-type"
+          list="trace-event-type-options"
+          placeholder="Pick a type or enter a new one"
           value={form.eventType}
           onChange={(event) => setForm({ ...form, eventType: event.target.value })}
-        >
+        />
+        <datalist id="trace-event-type-options">
           {eventTypes.map((type) => (
-            <option key={type}>{type}</option>
+            <option key={type} value={type} />
           ))}
-        </select>
+        </datalist>
+        <p className="text-xs text-stone-500">
+          Choose an existing option or type a new event. New types are saved for future use.
+        </p>
         <input
           className={inputClass}
           type="datetime-local"
@@ -1619,6 +1650,98 @@ function BatchUsagePanel({
   );
 }
 
+function PriceBreakdownPanel({
+  batch,
+  initial,
+  onSaved,
+}: {
+  batch: Batch;
+  initial: PriceBreakdown | null;
+  onSaved: (value: PriceBreakdown) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [form, setForm] = useState<PriceBreakdownPayload>({
+    consumerPrice: initial?.consumerPrice ?? batch.consumerPricePerUnit,
+    farmerPrice: initial?.farmerPrice ?? batch.farmerPricePerUnit,
+    wastageCost: initial?.wastageCost ?? 0,
+    packagingCost: initial?.packagingCost ?? 0,
+    operationalCost: initial?.operationalCost ?? batch.operationalCostPerUnit,
+    currency: initial?.currency ?? "INR",
+    priceUnit: initial?.priceUnit ?? batch.unit,
+  });
+  const margin =
+    form.consumerPrice -
+    form.farmerPrice -
+    form.wastageCost -
+    form.packagingCost -
+    form.operationalCost;
+
+  function numberField(
+    label: string,
+    key:
+      | "consumerPrice"
+      | "farmerPrice"
+      | "wastageCost"
+      | "packagingCost"
+      | "operationalCost",
+  ) {
+    return (
+      <label className="text-sm font-bold text-stone-700">
+        {label}
+        <input
+          className={`${inputClass} mt-1`}
+          min="0"
+          onChange={(event) =>
+            setForm({ ...form, [key]: Number(event.target.value) || 0 })
+          }
+          step="0.01"
+          type="number"
+          value={String(form[key])}
+        />
+      </label>
+    );
+  }
+
+  async function save() {
+    setSaving(true);
+    setMessage("");
+    try {
+      const saved = await priceBreakdownApi.save(batch.id, form);
+      onSaved(saved);
+      setMessage("Price breakdown saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save price breakdown.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">Price Breakdown</h2>
+      <p className="mt-1 text-sm text-stone-600">All amounts are per {form.priceUnit}.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {numberField("Consumer price", "consumerPrice")}
+        {numberField("Farmer price", "farmerPrice")}
+        {numberField("Wastage", "wastageCost")}
+        {numberField("Packaging", "packagingCost")}
+        {numberField("Operation cost", "operationalCost")}
+        <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
+          <span className="block font-bold">Margin</span>
+          <strong className="text-2xl">₹{margin.toFixed(2)}</strong>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button disabled={saving || margin < 0} onClick={() => void save()}>
+          {saving ? "Saving..." : "Save Breakdown"}
+        </Button>
+        {message ? <p className="text-sm font-bold text-stone-600">{message}</p> : null}
+      </div>
+    </Card>
+  );
+}
+
 function QrPanel({
   batchId,
   onSaved,
@@ -1631,16 +1754,33 @@ function QrPanel({
   const [saving, setSaving] = useState(false);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
-  const traceUrl = qr ? `${origin}/trace/${qr.publicToken}` : "";
+  const [currentQr, setCurrentQr] = useState(qr);
+  const traceUrl = currentQr ? `${origin}/trace/${currentQr.publicToken}` : "";
 
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
 
+  useEffect(() => setCurrentQr(qr), [qr]);
+
+  useEffect(() => {
+    if (!currentQr || currentQr.qrImageUrl) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void qrApi.get(batchId).then((nextQr) => {
+        if (nextQr) setCurrentQr(nextQr);
+        if (nextQr?.qrImageUrl || attempts >= 10) window.clearInterval(timer);
+      });
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [batchId, currentQr?.id, currentQr?.qrImageUrl]);
+
   async function generate() {
     setSaving(true);
-    await qrApi.create(batchId).finally(() => setSaving(false));
-    onSaved();
+    const generated = await qrApi.create(batchId).finally(() => setSaving(false));
+    setCurrentQr(generated);
+    if (generated.qrImageUrl) onSaved();
   }
 
   async function copyTraceUrl() {
@@ -1650,24 +1790,43 @@ function QrPanel({
     window.setTimeout(() => setCopied(false), 1800);
   }
 
+  async function shareTrace() {
+    if (!traceUrl) return;
+    if (navigator.share) {
+      await navigator.share({ title: `${BRAND_NAME} traceability`, url: traceUrl });
+    } else {
+      await copyTraceUrl();
+    }
+  }
+
   return (
     <Card>
       <h2 className="text-xl font-black">QR Code</h2>
-      {qr ? (
+      {currentQr ? (
         <div className="mt-3 space-y-3">
-          {qr.qrImageUrl ? (
+          {currentQr.qrImageUrl ? (
             <div className="rounded-3xl bg-white p-3 shadow-inner">
               <MediaPreview
                 className="mx-auto aspect-square w-48 rounded-2xl"
                 type="image"
-                url={qr.qrImageUrl}
+                url={currentQr.qrImageUrl}
               />
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-black">QR image is processing</p>
+              <p className="mt-1">
+                This updates automatically. Retry if it takes longer than expected.
+              </p>
+              <Button disabled={saving} onClick={() => void generate()} variant="secondary">
+                {saving ? "Retrying..." : "Retry"}
+              </Button>
+            </div>
+          )}
           <p className="text-sm font-bold text-stone-600">Public trace URL</p>
           <Link
             className="block break-all rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900"
-            href={`/trace/${qr.publicToken}`}
+            href={`/trace/${currentQr.publicToken}`}
           >
             {traceUrl}
           </Link>
@@ -1675,9 +1834,17 @@ function QrPanel({
             <Button onClick={() => void copyTraceUrl()} variant="secondary">
               {copied ? "Copied" : "Copy URL"}
             </Button>
-            <ButtonLink href={`/trace/${qr.publicToken}`} variant="secondary">
+            <ButtonLink href={`/trace/${currentQr.publicToken}`} variant="secondary">
               Open Trace Page
             </ButtonLink>
+            <Button onClick={() => void shareTrace()} variant="secondary">
+              Share
+            </Button>
+            {currentQr.qrImageUrl ? (
+              <a className={inputClass} download href={currentQr.qrImageUrl}>
+                Download QR
+              </a>
+            ) : null}
           </div>
         </div>
       ) : (

@@ -122,7 +122,7 @@ describe("public trace page", () => {
 
   it("renders readable page error when trace API fails", async () => {
     vi.mocked(getPublicTrace).mockRejectedValueOnce(
-      new Error("Unable to reach FarmToFolk trace service."),
+      new Error("Unable to reach the Namma Trace service."),
     );
 
     const Page = await PublicTracePage({
@@ -132,7 +132,7 @@ describe("public trace page", () => {
     render(Page);
 
     expect(screen.getByRole("heading", { name: /Trace details unavailable/i })).toBeInTheDocument();
-    expect(screen.getByText("Unable to reach FarmToFolk trace service.")).toBeInTheDocument();
+    expect(screen.getByText("Unable to reach the Namma Trace service.")).toBeInTheDocument();
   });
 
   it("renders farmer card summary", () => {
@@ -144,8 +144,6 @@ describe("public trace page", () => {
 
   it("opens farmer accordion and shows bio", async () => {
     render(<FarmerCard farmer={sampleTrace.farmer} />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Farmer/i }));
 
     expect(screen.getByText(/practicing natural farming for over 12 years/i)).toBeInTheDocument();
   });

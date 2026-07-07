@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { LeafIcon } from "./trace-utils";
+import {
+  BRAND_FOOTER_TEXT,
+  BRAND_TRACE_SHARE_TEXT,
+  BRAND_TRACE_TITLE,
+} from "@/lib/constants";
 
 export function TraceFooter() {
   const [copied, setCopied] = useState(false);
 
   async function shareTrace() {
     const shareData = {
-      text: "Trace this FarmToFolk produce.",
-      title: "FarmToFolk Trace",
+      text: BRAND_TRACE_SHARE_TEXT,
+      title: BRAND_TRACE_TITLE,
       url: window.location.href,
     };
 
@@ -53,7 +58,7 @@ export function TraceFooter() {
         </div>
       </div>
       <p className="mt-6 text-center text-sm font-medium text-stone-500">
-        FarmToFolk - Building trust between farmers and consumers
+        {BRAND_FOOTER_TEXT}
       </p>
     </footer>
   );

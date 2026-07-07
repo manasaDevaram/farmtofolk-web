@@ -47,7 +47,7 @@ describe("getPublicTrace", () => {
     );
 
     await expect(getPublicTrace("offline")).rejects.toThrow(
-      "Unable to reach FarmToFolk trace service.",
+      "Unable to reach the Namma Trace service.",
     );
   });
 });

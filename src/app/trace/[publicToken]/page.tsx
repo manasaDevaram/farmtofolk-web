@@ -9,8 +9,8 @@ import { TraceHero } from "@/components/trace/TraceHero";
 import { TrustSummaryCard } from "@/components/trace/TrustSummaryCard";
 import { VerificationCard } from "@/components/trace/VerificationCard";
 import { getPublicTrace } from "@/lib/api";
-import { formatNumber } from "@/components/trace/trace-utils";
 import { LeafMark } from "@/components/assets/FarmToFolkAssets";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/constants";
 
 export default async function PublicTracePage({
   params,
@@ -36,10 +36,10 @@ export default async function PublicTracePage({
           <div>
             <div className="flex items-center gap-3 text-[var(--ftf-green-900)]">
               <LeafMark className="h-11 w-11" />
-              <span className="ftf-display text-3xl font-bold">FarmToFolk</span>
+              <span className="ftf-display text-3xl font-bold">{BRAND_NAME}</span>
             </div>
             <p className="mt-2 text-base font-medium text-stone-800 sm:text-lg">
-              Traceable. Transparent. Trusted.
+              {BRAND_TAGLINE}
             </p>
           </div>
           <button
@@ -53,28 +53,6 @@ export default async function PublicTracePage({
 
         <TraceHero batch={trace.batch} farmMedia={trace.farmMedia} />
 
-        <section className="mt-4 rounded-2xl border border-[var(--ftf-border)] bg-[var(--ftf-paper-light)] p-5 shadow-[0_10px_28px_rgba(65,49,29,0.08)]">
-          <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ftf-green-700)]">
-            Lot summary
-          </p>
-          <dl className="mt-3 grid gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-sm text-[var(--ftf-muted)]">Crop</dt>
-              <dd className="text-lg font-bold">{trace.batch.cropName || "Not available"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-[var(--ftf-muted)]">Variety</dt>
-              <dd className="text-lg font-bold">{trace.batch.variety || "Not available"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-[var(--ftf-muted)]">Quantity Received</dt>
-              <dd className="text-lg font-bold">
-                {formatNumber(trace.batch.quantityReceived)} {trace.batch.unit}
-              </dd>
-            </div>
-          </dl>
-        </section>
-
         <div className="mt-4 space-y-4">
           <FarmerCard farmer={trace.farmer} />
           <FarmCard farm={trace.farm} farmMedia={trace.farmMedia} />
@@ -82,7 +60,7 @@ export default async function PublicTracePage({
             evidence={trace.verificationEvidence}
             verification={trace.latestVerification}
           />
-          <MoneyBreakdownCard batch={trace.batch} />
+          <MoneyBreakdownCard batch={trace.batch} priceBreakdown={trace.priceBreakdown} />
           <FarmMediaCard farmMedia={trace.farmMedia} />
           <TrustSummaryCard trace={trace} />
           <ProductDetailsCard batch={trace.batch} traceEvents={trace.traceEvents} />

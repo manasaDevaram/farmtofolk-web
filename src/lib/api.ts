@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/lib/api-config";
 import type { PublicTraceResponse } from "@/types/public-trace";
+import { TRACE_SERVICE_UNAVAILABLE } from "@/lib/constants";
 
 export async function getPublicTrace(publicToken: string): Promise<PublicTraceResponse> {
   let response: Response;
@@ -10,7 +11,7 @@ export async function getPublicTrace(publicToken: string): Promise<PublicTraceRe
     });
   } catch {
     throw new Error(
-      "Unable to reach FarmToFolk trace service. Please check your connection and try again.",
+      TRACE_SERVICE_UNAVAILABLE,
     );
   }
 

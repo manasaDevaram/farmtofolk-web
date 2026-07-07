@@ -24,7 +24,8 @@ export interface PublicTraceBatch {
   receivedDate: string;
   farmerPricePerUnit: number;
   consumerPricePerUnit: number;
-  operationalCostPerUnit: number;
+  operationalCostPerUnit?: number;
+  farmToConsumerCostPerUnit?: number;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -120,6 +121,16 @@ export interface PublicTraceResponse {
   batch: PublicTraceBatch;
   farmer: PublicTraceFarmer;
   farm: PublicTraceFarm;
+  priceBreakdown?: Nullable<{
+    consumerPrice: number;
+    farmerPrice: number;
+    wastageCost: number;
+    packagingCost: number;
+    operationalCost: number;
+    margin: number;
+    currency: string;
+    priceUnit: string;
+  }>;
   latestVerification: Nullable<PublicTraceVerification>;
   verificationEvidence: PublicTraceVerificationEvidence[];
   farmMedia: PublicTraceFarmMedia[];

@@ -1,4 +1,5 @@
 import { LeafIcon } from "./trace-utils";
+import { BRAND_NAME } from "@/lib/constants";
 
 export function LoadingState() {
   return (
@@ -9,7 +10,7 @@ export function LoadingState() {
             <LeafIcon className="h-7 w-7" />
           </span>
           <div>
-            <p className="text-xl font-black text-emerald-950">FarmToFolk</p>
+            <p className="text-xl font-black text-emerald-950">{BRAND_NAME}</p>
             <p className="text-sm text-stone-600">Loading your trace details...</p>
           </div>
         </div>
