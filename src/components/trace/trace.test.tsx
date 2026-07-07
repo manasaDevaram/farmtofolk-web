@@ -63,20 +63,8 @@ const sampleTrace: PublicTraceResponse = {
     village: "Nanjangud",
   },
   farmMedia: [],
-  latestVerification: {
-    agroecologyVerified: true,
-    chemicalFreeClaim: true,
-    checklistJson: JSON.stringify({ noSyntheticPesticides: true }),
-    createdAt: "2026-05-17T00:00:00Z",
-    farmId: "farm-1",
-    id: "verification-1",
-    nextVerificationDue: "2026-11-17",
-    status: "VERIFIED",
-    updatedAt: "2026-05-17T00:00:00Z",
-    verificationType: "FIELD_VISIT",
+  lastVerified: {
     verificationDate: "2026-05-17",
-    verifiedByUserId: null,
-    observations: "Farm practices are in line with agroecological principles.",
   },
   qrCode: {
     batchId: "batch-1",
@@ -186,7 +174,7 @@ describe("public trace page", () => {
             verificationId: "verification-1",
           },
         ]}
-        verification={sampleTrace.latestVerification}
+        lastVerified={sampleTrace.lastVerified}
       />,
     );
 
@@ -200,13 +188,23 @@ describe("public trace page", () => {
     expect(screen.queryByText(/Pending/i)).not.toBeInTheDocument();
   });
 
-  it("hides verification card when only pending verification exists", () => {
+  it("hides verification card when last verified is missing", () => {
     render(
       <VerificationCard
-        verification={{
-          ...sampleTrace.latestVerification!,
-          status: "PENDING",
-        }}
+        evidence={[
+          {
+            caption: "Public compost evidence",
+            capturedAt: null,
+            createdAt: "2026-05-17T00:00:00Z",
+            fileHash: null,
+            fileType: "IMAGE",
+            fileUrl: "https://example.com/public.jpg",
+            id: "evidence-1",
+            isPublic: true,
+            uploadedByUserId: null,
+            verificationId: "verification-1",
+          },
+        ]}
       />,
     );
 
@@ -214,7 +212,7 @@ describe("public trace page", () => {
   });
 
   it("hides verification card when verified but no public evidence exists", () => {
-    render(<VerificationCard verification={sampleTrace.latestVerification} evidence={[]} />);
+    render(<VerificationCard lastVerified={sampleTrace.lastVerified} evidence={[]} />);
 
     expect(screen.queryByRole("button", { name: /Agroecology Verification/i })).not.toBeInTheDocument();
   });
@@ -236,7 +234,7 @@ describe("public trace page", () => {
             verificationId: "verification-1",
           },
         ]}
-        verification={sampleTrace.latestVerification}
+        lastVerified={sampleTrace.lastVerified}
       />,
     );
 

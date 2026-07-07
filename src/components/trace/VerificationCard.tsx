@@ -1,25 +1,18 @@
-import type { PublicTraceMedia, PublicTraceVerification } from "@/types/public-trace";
+import type { PublicTraceLastVerified, PublicTraceMedia } from "@/types/public-trace";
 import { TraceAccordionCard } from "./TraceAccordionCard";
 import { CheckIcon, formatDate, LeafIcon, MediaTile } from "./trace-utils";
 
-function isVerifiedStatus(status?: string | null): boolean {
-  const normalized = status?.trim().toUpperCase();
-  return normalized === "VERIFIED" || normalized === "APPROVED";
-}
-
 export function VerificationCard({
   evidence,
-  verification,
+  lastVerified,
 }: {
   evidence?: PublicTraceMedia[] | null;
-  verification?: PublicTraceVerification | null;
+  lastVerified?: PublicTraceLastVerified | null;
 }) {
   const publicEvidence = evidence?.filter((item) => item.isPublic !== false) ?? [];
-  if (!verification || !isVerifiedStatus(verification.status) || publicEvidence.length === 0) {
+  if (!lastVerified || publicEvidence.length === 0) {
     return null;
   }
-
-  const verificationDate = verification.verificationDate;
 
   return (
     <TraceAccordionCard
@@ -44,7 +37,9 @@ export function VerificationCard({
         <>
           <p>
             Last verified on{" "}
-            <span className="font-bold text-stone-950">{formatDate(verificationDate)}</span>
+            <span className="font-bold text-stone-950">
+              {formatDate(lastVerified.verificationDate)}
+            </span>
           </p>
           <p className="mt-1 inline-flex items-center gap-2 font-bold text-emerald-800">
             <CheckIcon className="h-4 w-4" />

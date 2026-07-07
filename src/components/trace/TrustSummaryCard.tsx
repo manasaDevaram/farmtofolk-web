@@ -14,13 +14,9 @@ const badges = [
 export function TrustSummaryCard({ trace }: { trace: PublicTraceResponse }) {
   const active = new Set<string>();
 
-  if (trace.farmer) active.add("Farmer Verified");
   const hasPublicVerificationEvidence = trace.verificationEvidence?.some((item) => item.isPublic);
-  const verificationStatus = trace.latestVerification?.status?.toUpperCase();
-  if (
-    hasPublicVerificationEvidence &&
-    (verificationStatus === "VERIFIED" || verificationStatus === "APPROVED")
-  ) {
+  if (trace.farmer) active.add("Farmer Verified");
+  if (trace.lastVerified && hasPublicVerificationEvidence) {
     active.add("Farm Verified");
   }
   if (hasPublicVerificationEvidence) {

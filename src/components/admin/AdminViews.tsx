@@ -1042,6 +1042,21 @@ function VerificationPanel({
   const [error, setError] = useState("");
   const isPendingForm = form.status.trim().toUpperCase() === "PENDING";
   const latestIsPending = latest?.status?.trim().toUpperCase() === "PENDING";
+  const latestIsVerified = isVerifiedStatus(latest?.status);
+  const publicEvidenceCount = evidence.filter((item) => item.isPublic).length;
+  const internalEvidenceCount = evidence.length - publicEvidenceCount;
+
+  const defaultForm = (): VerificationPayload => ({
+    agroecologyVerified: true,
+    chemicalFreeClaim: true,
+    checklistJson: "{}",
+    nextVerificationDue: "",
+    observations: "",
+    status: "PENDING",
+    verificationDate: today(),
+    verificationType: "FIELD_VISIT",
+    verifiedByUserId: null,
+  });
 
   async function save() {
     setError("");
@@ -1053,6 +1068,7 @@ function VerificationPanel({
         checklistJson: isPendingForm ? null : form.checklistJson,
         nextVerificationDue: form.nextVerificationDue || null,
       });
+      setForm(defaultForm());
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save verification.");
@@ -1077,6 +1093,21 @@ function VerificationPanel({
       ) : (
         <p className="mt-2 text-sm text-stone-500">This farm has not been verified yet.</p>
       )}
+      {latestIsVerified && publicEvidenceCount === 0 ? (
+        <p className="mt-2 text-sm font-bold text-amber-800">
+          Verified, but no public evidence uploaded yet. Customers will not see verification on the
+          trace page until at least one public document is added.
+        </p>
+      ) : null}
+      {latestIsVerified && publicEvidenceCount > 0 ? (
+        <p className="mt-2 text-sm font-bold text-emerald-800">
+          {publicEvidenceCount} public document{publicEvidenceCount === 1 ? "" : "s"} visible on
+          trace page
+          {internalEvidenceCount > 0
+            ? ` · ${internalEvidenceCount} internal-only document${internalEvidenceCount === 1 ? "" : "s"}`
+            : ""}
+        </p>
+      ) : null}
       {latest ? (
         <div className="mt-4">
           <h3 className="text-sm font-black uppercase text-stone-500">
@@ -1113,8 +1144,8 @@ function VerificationPanel({
       ) : null}
       <div className="mt-4 grid gap-3">
         <p className="text-sm font-bold text-stone-600">
-          Add a verification record. Use pending when docs are not ready yet; customers only see the
-          last verified record.
+          Add a verification record. Use pending when docs are not ready yet. Customers only see the
+          last verified record once public evidence is uploaded.
         </p>
         <input
           className={inputClass}
