@@ -1095,8 +1095,8 @@ function VerificationPanel({
       )}
       {latestIsVerified && publicEvidenceCount === 0 ? (
         <p className="mt-2 text-sm font-bold text-amber-800">
-          Verified, but no public evidence uploaded yet. Customers will not see verification on the
-          trace page until at least one public document is added.
+          Verified, but no public evidence uploaded yet. The verification section will still appear
+          on the trace page; upload public documents when ready.
         </p>
       ) : null}
       {latestIsVerified && publicEvidenceCount > 0 ? (

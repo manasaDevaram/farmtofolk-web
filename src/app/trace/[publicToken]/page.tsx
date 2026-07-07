@@ -58,7 +58,7 @@ export default async function PublicTracePage({
           <FarmCard farm={trace.farm} farmMedia={trace.farmMedia} />
           <VerificationCard
             evidence={trace.verificationEvidence}
-            lastVerified={trace.lastVerified}
+            verification={trace.verification}
           />
           <MoneyBreakdownCard batch={trace.batch} priceBreakdown={trace.priceBreakdown} />
           <FarmMediaCard farmMedia={trace.farmMedia} />

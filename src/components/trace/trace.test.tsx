@@ -63,8 +63,14 @@ const sampleTrace: PublicTraceResponse = {
     village: "Nanjangud",
   },
   farmMedia: [],
-  lastVerified: {
+  verification: {
     verificationDate: "2026-05-17",
+    verificationType: "FIELD_VISIT",
+    chemicalFreeClaim: true,
+    agroecologyVerified: true,
+    checklistJson: JSON.stringify({ noSyntheticPesticides: true }),
+    observations: "Farm practices are in line with agroecological principles.",
+    nextVerificationDue: "2026-11-17",
   },
   qrCode: {
     batchId: "batch-1",
@@ -174,7 +180,7 @@ describe("public trace page", () => {
             verificationId: "verification-1",
           },
         ]}
-        lastVerified={sampleTrace.lastVerified}
+        verification={sampleTrace.verification}
       />,
     );
 
@@ -188,7 +194,7 @@ describe("public trace page", () => {
     expect(screen.queryByText(/Pending/i)).not.toBeInTheDocument();
   });
 
-  it("hides verification card when last verified is missing", () => {
+  it("hides verification card when verification is missing", () => {
     render(
       <VerificationCard
         evidence={[
@@ -211,10 +217,14 @@ describe("public trace page", () => {
     expect(screen.queryByRole("button", { name: /Agroecology Verification/i })).not.toBeInTheDocument();
   });
 
-  it("hides verification card when verified but no public evidence exists", () => {
-    render(<VerificationCard lastVerified={sampleTrace.lastVerified} evidence={[]} />);
+  it("shows verification section without status labels when verified", () => {
+    render(<VerificationCard verification={sampleTrace.verification} evidence={[]} />);
 
-    expect(screen.queryByRole("button", { name: /Agroecology Verification/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agroecology Verification/i })).toBeInTheDocument();
+    expect(screen.getByText(/Last verified on/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Pending/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Failed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Latest status/i)).not.toBeInTheDocument();
   });
 
   it("shows last verified summary when public evidence exists", () => {
@@ -234,7 +244,7 @@ describe("public trace page", () => {
             verificationId: "verification-1",
           },
         ]}
-        lastVerified={sampleTrace.lastVerified}
+        verification={sampleTrace.verification}
       />,
     );
 

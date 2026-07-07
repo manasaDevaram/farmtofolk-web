@@ -64,8 +64,14 @@ export interface PublicTraceFarm {
   updatedAt: string;
 }
 
-export interface PublicTraceLastVerified {
+export interface PublicTraceVerification {
   verificationDate: string;
+  verificationType: Nullable<string>;
+  chemicalFreeClaim: Nullable<boolean>;
+  agroecologyVerified: Nullable<boolean>;
+  checklistJson: Nullable<string>;
+  observations: Nullable<string>;
+  nextVerificationDue: Nullable<string>;
 }
 
 export interface PublicTraceVerificationEvidence {
@@ -120,7 +126,7 @@ export interface PublicTraceResponse {
     currency: string;
     priceUnit: string;
   }>;
-  lastVerified: Nullable<PublicTraceLastVerified>;
+  verification: Nullable<PublicTraceVerification>;
   verificationEvidence: PublicTraceVerificationEvidence[];
   farmMedia: PublicTraceFarmMedia[];
   traceEvents: PublicTraceEvent[];
