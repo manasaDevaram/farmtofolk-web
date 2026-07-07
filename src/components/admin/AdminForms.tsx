@@ -10,9 +10,13 @@ type SubmitState = { error?: string; success?: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-type FarmFormState = Omit<FarmPayload, "latitude" | "longitude" | "sizeAcres"> & {
+type FarmFormState = Omit<
+  FarmPayload,
+  "latitude" | "longitude" | "altitudeMeters" | "sizeAcres"
+> & {
   latitude: string;
   longitude: string;
+  altitudeMeters: string;
   sizeAcres: string;
 };
 
@@ -168,6 +172,7 @@ export function FarmForm({
   onUnlockFarmer?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [state, setState] = useState<SubmitState>({});
   const [form, setForm] = useState<FarmFormState>({
     farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
@@ -177,6 +182,8 @@ export function FarmForm({
     state: initial?.state ?? "",
     latitude: initial?.latitude == null ? "" : String(initial.latitude),
     longitude: initial?.longitude == null ? "" : String(initial.longitude),
+    altitudeMeters:
+      initial?.altitudeMeters == null ? "" : String(initial.altitudeMeters),
     sizeAcres: initial?.sizeAcres == null ? "" : String(initial.sizeAcres),
     farmingType: initial?.farmingType ?? "NATURAL_FARMING",
   });
@@ -187,14 +194,59 @@ export function FarmForm({
       setState({ error: "Geolocation is not available in this browser." });
       return;
     }
+    setLocating(true);
+    setState({});
     navigator.geolocation.getCurrentPosition(
-      (position) =>
-        setForm({
-          ...form,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }),
-      () => setState({ error: "Could not read current location." }),
+      async (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const coordinateFields = {
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+          altitudeMeters:
+            position.coords.altitude == null ? "" : position.coords.altitude.toFixed(1),
+        };
+        setForm((current) => ({ ...current, ...coordinateFields }));
+        try {
+          const response = await fetch(
+            `/api/location-details?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`,
+          );
+          const details = (await response.json()) as {
+            altitudeMeters?: number | null;
+            district?: string | null;
+            message?: string;
+            state?: string | null;
+            village?: string | null;
+          };
+          if (!response.ok) throw new Error(details.message || "Location lookup failed.");
+          setForm((current) => ({
+            ...current,
+            ...coordinateFields,
+            altitudeMeters:
+              details.altitudeMeters == null
+                ? coordinateFields.altitudeMeters
+                : String(Math.round(details.altitudeMeters)),
+            district: details.district || current.district,
+            state: details.state || current.state,
+            village: details.village || current.village,
+          }));
+          setState({ success: "Location details filled. Please verify the address." });
+        } catch (error) {
+          setState({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Coordinates captured, but address lookup failed.",
+          });
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+        setState({ error: "Could not read current location." });
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
     );
   }
 
@@ -223,6 +275,7 @@ export function FarmForm({
         ...form,
         latitude: optionalNumber(form.latitude),
         longitude: optionalNumber(form.longitude),
+        altitudeMeters: optionalNumber(form.altitudeMeters),
         sizeAcres,
       });
       setState({ success: "Farm saved successfully." });
@@ -286,8 +339,8 @@ export function FarmForm({
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-black">Location</h2>
-          <Button onClick={useCurrentLocation} variant="secondary">
-            Use current location
+          <Button disabled={locating} onClick={useCurrentLocation} variant="secondary">
+            {locating ? "Finding address..." : "Use current location"}
           </Button>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -323,7 +376,18 @@ export function FarmForm({
             value={form.longitude}
             onChange={(longitude) => setForm({ ...form, longitude })}
           />
+          <TextField
+            help="Approximate elevation above sea level"
+            label="Altitude (metres)"
+            type="number"
+            placeholder="Altitude"
+            value={form.altitudeMeters}
+            onChange={(altitudeMeters) => setForm({ ...form, altitudeMeters })}
+          />
         </div>
+        <p className="mt-3 text-xs text-[var(--ftf-muted)]">
+          Address data © OpenStreetMap contributors. Elevation data: Open-Meteo / Copernicus.
+        </p>
       </Card>
       <SubmitBar saving={saving} state={state} />
     </form>

@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SignedMedia } from "@/components/SignedMedia";
 import {
   batchApi,
@@ -44,6 +44,7 @@ import type {
 } from "@/types/admin";
 import { cleanMediaUrl } from "@/lib/media-url";
 import { BRAND_NAME } from "@/lib/constants";
+import { API_BASE_URL } from "@/lib/api-config";
 import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
 import { DashboardSummaryView } from "./AdminDashboardCards";
 import {
@@ -1754,11 +1755,16 @@ function QrPanel({
   const [saving, setSaving] = useState(false);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
+  const [qrRefresh, setQrRefresh] = useState(0);
   const [currentQr, setCurrentQr] = useState(qr);
-  const [pollCycle, setPollCycle] = useState(0);
-  const [pollExhausted, setPollExhausted] = useState(false);
-  const autoTriggered = useRef(false);
   const traceUrl = currentQr ? `${origin}/trace/${currentQr.publicToken}` : "";
+  const baseQrImageUrl = currentQr
+    ? currentQr.qrImageUrl ||
+      `${API_BASE_URL}/api/public/qr/${encodeURIComponent(currentQr.publicToken)}.png`
+    : "";
+  const qrImageUrl = baseQrImageUrl
+    ? `${baseQrImageUrl}${baseQrImageUrl.includes("?") ? "&" : "?"}refresh=${qrRefresh}`
+    : "";
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -1766,37 +1772,10 @@ function QrPanel({
 
   useEffect(() => setCurrentQr(qr), [qr]);
 
-  useEffect(() => {
-    if (!currentQr || currentQr.qrImageUrl) return;
-    setPollExhausted(false);
-    if (!autoTriggered.current) {
-      autoTriggered.current = true;
-      setSaving(true);
-      void qrApi
-        .create(batchId)
-        .then(setCurrentQr)
-        .finally(() => setSaving(false));
-    }
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      void qrApi.get(batchId).then((nextQr) => {
-        if (nextQr) setCurrentQr(nextQr);
-        if (nextQr?.qrImageUrl || attempts >= 10) {
-          window.clearInterval(timer);
-          if (!nextQr?.qrImageUrl) setPollExhausted(true);
-        }
-      });
-    }, 2000);
-    return () => window.clearInterval(timer);
-  }, [batchId, currentQr?.id, currentQr?.qrImageUrl, pollCycle]);
-
   async function generate() {
     setSaving(true);
-    setPollExhausted(false);
     const generated = await qrApi.create(batchId).finally(() => setSaving(false));
     setCurrentQr(generated);
-    setPollCycle((cycle) => cycle + 1);
     if (generated.qrImageUrl) onSaved();
   }
 
@@ -1816,36 +1795,56 @@ function QrPanel({
     }
   }
 
+  async function qrFile() {
+    if (!qrImageUrl || !currentQr) throw new Error("QR image is unavailable.");
+    const response = await fetch(qrImageUrl);
+    if (!response.ok) throw new Error("Could not load QR image.");
+    return new File(
+      [await response.blob()],
+      `namma-trace-${currentQr.publicToken}.png`,
+      { type: "image/png" },
+    );
+  }
+
+  async function downloadQr() {
+    const file = await qrFile();
+    const objectUrl = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = file.name;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  }
+
+  async function shareQrImage() {
+    const file = await qrFile();
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        text: "Scan this QR code to view the product trace.",
+        title: `${BRAND_NAME} QR code`,
+      });
+      return;
+    }
+    if (navigator.share) {
+      await navigator.share({ title: `${BRAND_NAME} QR code`, url: qrImageUrl });
+      return;
+    }
+    await downloadQr();
+  }
+
   return (
     <Card>
       <h2 className="text-xl font-black">QR Code</h2>
       {currentQr ? (
         <div className="mt-3 space-y-3">
-          {currentQr.qrImageUrl ? (
-            <div className="rounded-3xl bg-white p-3 shadow-inner">
-              <MediaPreview
-                className="mx-auto aspect-square w-48 rounded-2xl"
-                type="image"
-                url={currentQr.qrImageUrl}
-              />
-            </div>
-          ) : (
-            <div className="flex min-h-48 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              {pollExhausted ? (
-                <div className="text-center">
-                  <p className="font-black">QR generation needs another attempt</p>
-                  <Button disabled={saving} onClick={() => void generate()} variant="secondary">
-                    {saving ? "Retrying..." : "Retry generation"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <span className="mx-auto block h-9 w-9 animate-spin rounded-full border-4 border-amber-200 border-t-amber-800" />
-                  <p className="mt-3 font-bold">Generating QR code…</p>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="rounded-3xl bg-white p-3 shadow-inner">
+            <MediaPreview
+              className="mx-auto aspect-square w-48 rounded-2xl"
+              type="image"
+              url={qrImageUrl}
+            />
+          </div>
           <p className="text-sm font-bold text-stone-600">Public trace URL</p>
           <Link
             className="block break-all rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900"
@@ -1854,20 +1853,24 @@ function QrPanel({
             {traceUrl}
           </Link>
           <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setQrRefresh((value) => value + 1)} variant="secondary">
+              Fetch QR Image
+            </Button>
+            <Button onClick={() => void downloadQr()}>
+              Download QR Image
+            </Button>
+            <Button onClick={() => void shareQrImage()} variant="secondary">
+              Share QR Image
+            </Button>
             <Button onClick={() => void copyTraceUrl()} variant="secondary">
-              {copied ? "Copied" : "Copy URL"}
+              {copied ? "Copied" : "Copy Trace Link"}
             </Button>
             <ButtonLink href={`/trace/${currentQr.publicToken}`} variant="secondary">
               Open Trace Page
             </ButtonLink>
             <Button onClick={() => void shareTrace()} variant="secondary">
-              Share
+              Share Trace Link
             </Button>
-            {currentQr.qrImageUrl ? (
-              <a className={inputClass} download href={currentQr.qrImageUrl}>
-                Download QR
-              </a>
-            ) : null}
           </div>
         </div>
       ) : (

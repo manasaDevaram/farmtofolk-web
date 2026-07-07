@@ -23,9 +23,11 @@ export function TraceHero({
           src={heroImage}
         />
       ) : null}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_45%,rgba(239,68,68,0.85)_0_9%,transparent_10%),radial-gradient(circle_at_70%_55%,rgba(220,38,38,0.9)_0_11%,transparent_12%),radial-gradient(circle_at_91%_60%,rgba(248,113,113,0.82)_0_8%,transparent_9%),linear-gradient(100deg,#f8f3e9_0%,rgba(248,243,233,0.92)_36%,rgba(248,243,233,0.22)_62%,rgba(31,90,45,0.15)_100%)] bg-cover bg-center" />
-      <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_60%_48%,#ef4444_0_12%,transparent_13%),radial-gradient(circle_at_78%_56%,#dc2626_0_10%,transparent_11%),radial-gradient(circle_at_45%_60%,#f97316_0_9%,transparent_10%)] opacity-80 sm:block" />
-      <div className="relative min-h-64 bg-gradient-to-r from-[#f8f3e9] via-[#f8f3e9]/90 to-transparent p-7 sm:min-h-80 sm:p-10">
+      <div
+        className={`absolute inset-0 ${heroImage ? "bg-gradient-to-r from-[#f8f5ed] via-[#f8f5ed]/90 to-transparent" : "bg-gradient-to-br from-emerald-50 via-lime-50 to-emerald-800"}`}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/10 via-transparent to-white/5" />
+      <div className="relative min-h-64 p-7 sm:min-h-80 sm:p-10">
         <p className="text-lg font-medium text-stone-900">You are holding</p>
         <h1 className="mt-4 max-w-xl text-4xl font-black tracking-tight text-stone-950 sm:text-6xl">
           Organic {cropName}

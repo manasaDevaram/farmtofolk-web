@@ -57,6 +57,7 @@ export interface PublicTraceFarm {
   state: string;
   latitude: Nullable<number>;
   longitude: Nullable<number>;
+  altitudeMeters: Nullable<number>;
   sizeAcres: Nullable<number>;
   farmingType: Nullable<string>;
   createdAt: string;

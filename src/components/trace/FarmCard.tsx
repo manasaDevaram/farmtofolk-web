@@ -28,6 +28,12 @@ export function FarmCard({
           <dl>
             <FieldRow label="Farm Size" value={size ? `${formatNumber(size)} acres` : null} />
             <FieldRow label="Farming Type" value={toTitleCase(farm?.farmingType)} />
+            {farm?.altitudeMeters != null ? (
+              <FieldRow
+                label="Altitude"
+                value={`${formatNumber(farm.altitudeMeters)} m above sea level`}
+              />
+            ) : null}
           </dl>
           <div>
             <h3 className="mb-3 font-black text-stone-950">Farm media</h3>

@@ -42,6 +42,8 @@ export function VerificationCard({
   evidence?: PublicTraceMedia[] | null;
   verification?: PublicTraceVerification | null;
 }) {
+  if (!verification) return null;
+
   const checklist = parseChecklist(verification?.checklistJson);
   const verificationDate = verification?.verificationDate;
   const publicEvidence = evidence?.filter((item) => item.isPublic !== false) ?? [];
@@ -93,9 +95,11 @@ export function VerificationCard({
               label={isVerified ? "Verification Date" : "Submitted Date"}
               value={formatDate(verificationDate)}
             />
-            <FieldRow label="Next Due" value={formatDate(verification?.nextVerificationDue)} />
+            {verification.nextVerificationDue ? (
+              <FieldRow label="Next Due" value={formatDate(verification.nextVerificationDue)} />
+            ) : null}
           </dl>
-          <div>
+          {checklist.length || verification.observations ? <div>
             <h3 className="mb-3 font-black text-stone-950">Verification checklist</h3>
             {checklist.length ? (
               <ul className="grid gap-2 sm:grid-cols-2">
@@ -113,19 +117,15 @@ export function VerificationCard({
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="rounded-2xl bg-stone-50 p-4 text-sm text-stone-600">
-                No checklist details available.
-              </p>
-            )}
+            ) : null}
             {verification?.observations ? (
               <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-950">
                 <p className="font-black">Field officer notes</p>
                 <p className="mt-1 leading-6">{verification.observations}</p>
               </div>
             ) : null}
-          </div>
-          <div>
+          </div> : null}
+          {publicEvidence.length ? <div>
             <h3 className="mb-3 font-black text-stone-950">Public evidence</h3>
             <div className="grid grid-cols-2 gap-3">
               {publicEvidence.slice(0, 4).map((media, index) => (
@@ -136,13 +136,8 @@ export function VerificationCard({
                   media={media}
                 />
               ))}
-              {!publicEvidence.length ? (
-                <p className="col-span-full rounded-2xl bg-stone-50 p-4 text-sm text-stone-600">
-                  Public evidence photos are not available yet.
-                </p>
-              ) : null}
             </div>
-          </div>
+          </div> : null}
         </div>
       }
       summary={

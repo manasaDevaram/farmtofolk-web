@@ -63,26 +63,7 @@ export function MoneyBreakdownCard({
       icon={<span className="text-5xl font-black">₹</span>}
       openContent={
         <div>
-          <div className="grid items-center gap-6 lg:grid-cols-[0.8fr_0.8fr_1.4fr]">
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-stone-100 bg-stone-50 p-5">
-                <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-                  You paid (Retail price)
-                </p>
-                <p className="mt-2 text-3xl font-black text-stone-950">
-                  {formatCurrency(consumerPrice)} / {unit}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
-                <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-                  Farmer received
-                </p>
-                <p className="mt-2 text-3xl font-black text-emerald-800">
-                  {formatCurrency(farmerPrice)} / {unit}
-                </p>
-                <p className="mt-1 font-bold text-emerald-700">{farmerShare}%</p>
-              </div>
-            </div>
+          <div className="grid items-center gap-8 lg:grid-cols-[0.8fr_1.2fr]">
             <div
               className="relative mx-auto grid h-44 w-44 place-items-center rounded-full"
               style={{ background: `conic-gradient(${chartStops.join(", ")})` }}
@@ -128,18 +109,7 @@ export function MoneyBreakdownCard({
           </div>
         </div>
       }
-      summary={
-        <>
-          <div className="grid gap-2 font-bold text-stone-950 sm:grid-cols-2">
-            <span>
-              You paid: {formatCurrency(consumerPrice)} / {unit}
-            </span>
-            <span>
-              Farmer received: {formatCurrency(farmerPrice)} / {unit}
-            </span>
-          </div>
-        </>
-      }
+      summary={<p>Transparent distribution of the retail price.</p>}
       title="Where Your Money Goes"
     />
   );
