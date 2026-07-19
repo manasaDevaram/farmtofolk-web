@@ -34,6 +34,91 @@ import type {
   UpdateUserStatusRequest,
 } from "@/types/admin";
 
+function httpStatusMessage(status: number): string {
+  switch (status) {
+    case 400:
+      return "Invalid request";
+    case 401:
+      return "Unauthorized";
+    case 403:
+      return "Access denied";
+    case 404:
+      return "Not found";
+    case 409:
+      return "Conflict";
+    case 413:
+      return "File too large. Maximum upload size is 100 MB.";
+    case 415:
+      return "Unsupported file type";
+    case 500:
+      return "Internal server error";
+    case 502:
+      return "Bad gateway";
+    case 503:
+      return "Service unavailable";
+    default:
+      return `Request failed (${status})`;
+  }
+}
+
+async function readErrorMessage(response: Response) {
+  const fallback = httpStatusMessage(response.status);
+  const rawBody = await response.text();
+  if (!rawBody.trim()) return fallback;
+
+  try {
+    const body = JSON.parse(rawBody) as {
+      detail?: string;
+      error?: string;
+      errors?: unknown;
+      message?: string;
+      title?: string;
+    };
+    const directMessage = body.message ?? body.detail ?? body.title;
+    if (directMessage) return directMessage;
+    if (body.error) return body.error;
+
+    if (Array.isArray(body.errors)) {
+      const messages = body.errors
+        .map((error) => {
+          if (typeof error === "string") return error;
+          if (error && typeof error === "object") {
+            const value = error as { defaultMessage?: string; message?: string };
+            return value.defaultMessage ?? value.message;
+          }
+          return undefined;
+        })
+        .filter(Boolean);
+      if (messages.length) return messages.join(". ");
+    }
+
+    if (body.errors && typeof body.errors === "object") {
+      const messages = Object.values(body.errors)
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
+        .filter((value): value is string => typeof value === "string");
+      if (messages.length) return messages.join(". ");
+    }
+  } catch {
+    if (!rawBody.trimStart().startsWith("<")) return rawBody.trim();
+    const titleMatch = rawBody.match(/<title>([^<]+)<\/title>/i);
+    if (titleMatch?.[1]) return titleMatch[1].trim();
+  }
+
+  return fallback;
+}
+
+function networkErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") {
+      return "Upload timed out. Try a smaller file or a stronger connection.";
+    }
+    if (error.message.trim()) {
+      return error.message;
+    }
+  }
+  return "Could not reach the API. Check your internet connection and try again.";
+}
+
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -59,7 +144,7 @@ async function request<T>(
     });
   } catch (error) {
     console.error("Admin API network error", { error, url });
-    throw new Error("Backend unavailable. Please make sure the API server is running.");
+    throw new Error(networkErrorMessage(error));
   }
 
   if (options.optional404 && response.status === 404) {
@@ -73,15 +158,15 @@ async function request<T>(
     if (typeof window !== "undefined" && window.location.pathname !== "/login") {
       window.location.replace("/login");
     }
-    throw new Error(message || "Your session has expired. Please sign in again.");
+    throw new Error(message || httpStatusMessage(401));
   }
 
   if (response.status === 403) {
-    throw new Error(message || "Access denied");
+    throw new Error(message || httpStatusMessage(403));
   }
 
   if (!response.ok) {
-    throw new Error(message);
+    throw new Error(message || httpStatusMessage(response.status));
   }
 
   if (response.status === 204) return undefined as T;
@@ -89,49 +174,6 @@ async function request<T>(
 }
 
 const asJson = (body: unknown) => JSON.stringify(body);
-
-async function readErrorMessage(response: Response) {
-  const fallback = `Request failed with status ${response.status}`;
-  const rawBody = await response.text();
-  if (!rawBody.trim()) return fallback;
-
-  try {
-    const body = JSON.parse(rawBody) as {
-      detail?: string;
-      error?: string;
-      errors?: unknown;
-      message?: string;
-      title?: string;
-    };
-    const directMessage = body.message ?? body.detail ?? body.error ?? body.title;
-    if (directMessage) return directMessage;
-
-    if (Array.isArray(body.errors)) {
-      const messages = body.errors
-        .map((error) => {
-          if (typeof error === "string") return error;
-          if (error && typeof error === "object") {
-            const value = error as { defaultMessage?: string; message?: string };
-            return value.defaultMessage ?? value.message;
-          }
-          return undefined;
-        })
-        .filter(Boolean);
-      if (messages.length) return messages.join(". ");
-    }
-
-    if (body.errors && typeof body.errors === "object") {
-      const messages = Object.values(body.errors)
-        .flatMap((value) => (Array.isArray(value) ? value : [value]))
-        .filter((value): value is string => typeof value === "string");
-      if (messages.length) return messages.join(". ");
-    }
-  } catch {
-    if (!rawBody.trimStart().startsWith("<")) return rawBody.trim();
-  }
-
-  return fallback;
-}
 
 export const authApi = {
   login: (emailOrPhone: string, password: string) =>
