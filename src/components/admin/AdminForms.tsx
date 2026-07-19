@@ -31,12 +31,20 @@ export function FarmerForm({
   onSubmit,
 }: {
   initial?: Farmer | null;
-  onSubmit: (payload: FarmerPayload, active: boolean) => Promise<void>;
+  onSubmit: (
+    payload: FarmerPayload,
+    active: boolean,
+    media?: { profilePhoto?: File | null; introVideo?: File | null },
+  ) => Promise<void>;
 }) {
   const isAddMode = !initial;
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [state, setState] = useState<SubmitState>({});
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [introVideoFile, setIntroVideoFile] = useState<File | null>(null);
+  const profilePhotoPreview = useFilePreview(profilePhotoFile);
+  const introVideoPreview = useFilePreview(introVideoFile);
   const [form, setForm] = useState<FarmerPayload>({
     bio: initial?.bio ?? "",
     farmerCode: initial?.farmerCode ?? "",
@@ -118,6 +126,12 @@ export function FarmerForm({
           profilePhotoUrl: null,
         },
         active,
+        isAddMode
+          ? {
+              profilePhoto: profilePhotoFile,
+              introVideo: introVideoFile,
+            }
+          : undefined,
       );
       setState({ success: "Farmer saved successfully." });
     } catch (error) {
@@ -200,6 +214,26 @@ export function FarmerForm({
             onChange={(event) => setForm({ ...form, bio: event.target.value })}
           />
         </Field>
+        {isAddMode ? (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <MediaFilePicker
+              accept="image/jpeg,image/png,image/webp"
+              file={profilePhotoFile}
+              label="Profile photo"
+              onFile={setProfilePhotoFile}
+              previewType="image"
+              previewUrl={profilePhotoPreview}
+            />
+            <MediaFilePicker
+              accept="video/mp4,video/quicktime,video/webm"
+              file={introVideoFile}
+              label="Intro video"
+              onFile={setIntroVideoFile}
+              previewType="video"
+              previewUrl={introVideoPreview}
+            />
+          </div>
+        ) : null}
         <label className="mt-4 flex items-center gap-2 text-sm font-bold">
           <input
             checked={active}
@@ -720,6 +754,69 @@ async function fetchLocationDetails(latitude: number, longitude: number): Promis
   const details = (await response.json()) as LocationDetails;
   if (!response.ok) throw new Error(details.message || "Location lookup failed.");
   return details;
+}
+
+function MediaFilePicker({
+  accept,
+  file,
+  label,
+  onFile,
+  previewType,
+  previewUrl,
+}: {
+  accept: string;
+  file: File | null;
+  label: string;
+  onFile: (file: File | null) => void;
+  previewType: "image" | "video";
+  previewUrl: string | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+      <p className="text-sm font-black text-stone-900">{label}</p>
+      <div className="mt-3 grid gap-3">
+        {previewUrl ? (
+          previewType === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img alt={`${label} preview`} className="aspect-square w-full rounded-xl object-cover" src={previewUrl} />
+          ) : (
+            <video className="aspect-video w-full rounded-xl bg-black object-contain" controls src={previewUrl} />
+          )
+        ) : (
+          <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white text-sm text-stone-500">
+            No {label.toLowerCase()} selected
+          </div>
+        )}
+        <input
+          accept={accept}
+          className={inputClass}
+          type="file"
+          onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+        />
+        {file ? (
+          <Button onClick={() => onFile(null)} type="button" variant="secondary">
+            Remove {label.toLowerCase()}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function useFilePreview(file: File | null) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return previewUrl;
 }
 
 function optionalNumber(value: string): number | null {

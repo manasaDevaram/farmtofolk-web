@@ -256,11 +256,17 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
       {!loading && !error ? (
         <FarmerForm
           initial={farmer}
-          onSubmit={async (payload, active) => {
+          onSubmit={async (payload, active, media) => {
             const saved = farmerId
               ? await farmerApi.update(farmerId, payload)
               : await farmerApi.create(payload);
             if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
+            if (media?.profilePhoto) {
+              await farmerApi.uploadProfilePhoto(saved.id, media.profilePhoto);
+            }
+            if (media?.introVideo) {
+              await farmerApi.uploadIntroVideo(saved.id, media.introVideo);
+            }
             router.push(`/admin/farmers/${saved.id}`);
           }}
         />
