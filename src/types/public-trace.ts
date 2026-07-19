@@ -10,7 +10,6 @@ export interface PublicTraceQrCode {
   qrType: string;
   isActive: boolean;
   generatedAt: string;
-  expiresAt: Nullable<string>;
 }
 
 export interface PublicTraceBatch {

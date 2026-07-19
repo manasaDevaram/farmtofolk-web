@@ -274,7 +274,6 @@ export type QrCode = {
   qrType: string;
   isActive: boolean;
   generatedAt: string;
-  expiresAt: Nullable<string>;
 };
 
 export type PriceBreakdown = {

@@ -74,7 +74,6 @@ const sampleTrace: PublicTraceResponse = {
   },
   qrCode: {
     batchId: "batch-1",
-    expiresAt: null,
     generatedAt: "2026-06-21T00:00:00Z",
     id: "qr-1",
     isActive: true,

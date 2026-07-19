@@ -252,7 +252,7 @@ export const batchApi = {
   update: (batchId: string, payload: BatchPayload) =>
     request<Batch>(`/api/batches/${batchId}`, {
       body: asJson(payload),
-      method: "PUT",
+      method: "PATCH",
     }),
 };
 
