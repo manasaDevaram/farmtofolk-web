@@ -33,7 +33,9 @@ export function FarmerForm({
   initial?: Farmer | null;
   onSubmit: (payload: FarmerPayload, active: boolean) => Promise<void>;
 }) {
+  const isAddMode = !initial;
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [state, setState] = useState<SubmitState>({});
   const [form, setForm] = useState<FarmerPayload>({
     bio: initial?.bio ?? "",
@@ -48,6 +50,44 @@ export function FarmerForm({
     state: initial?.state ?? "",
   });
   const [active, setActive] = useState(initial?.active ?? true);
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setState({ error: "Geolocation is not available in this browser." });
+      return;
+    }
+    setLocating(true);
+    setState({});
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const details = await fetchLocationDetails(
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+          setForm((current) => ({
+            ...current,
+            district: details.district || current.district,
+            state: details.state || current.state,
+            village: details.village || current.village,
+          }));
+          setState({ success: "Location details filled. Please verify the address." });
+        } catch (error) {
+          setState({
+            error:
+              error instanceof Error ? error.message : "Could not look up your current location.",
+          });
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+        setState({ error: "Could not read current location." });
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -102,8 +142,15 @@ export function FarmerForm({
             label="Phone"
             required
             value={form.phone}
-            onChange={(phone) => setForm({ ...form, phone })}
-            help="10 digits only"
+            onChange={(phone) =>
+              setForm({
+                ...form,
+                phone: isAddMode ? phone.replace(/\D/g, "").slice(0, 10) : phone,
+              })
+            }
+            help={isAddMode ? "10 digits only" : undefined}
+            inputMode={isAddMode ? "numeric" : undefined}
+            maxLength={isAddMode ? 10 : undefined}
           />
           <TextField
             label="Joined Date"
@@ -115,7 +162,14 @@ export function FarmerForm({
         </div>
       </Card>
       <Card>
-        <h2 className="text-xl font-black">Location</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-black">Location</h2>
+          {isAddMode ? (
+            <Button disabled={locating} onClick={useCurrentLocation} type="button" variant="secondary">
+              {locating ? "Finding address..." : "Use current location"}
+            </Button>
+          ) : null}
+        </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <TextField
             label="Village"
@@ -211,17 +265,7 @@ export function FarmForm({
         };
         setForm((current) => ({ ...current, ...coordinateFields }));
         try {
-          const response = await fetch(
-            `/api/location-details?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`,
-          );
-          const details = (await response.json()) as {
-            altitudeMeters?: number | null;
-            district?: string | null;
-            message?: string;
-            state?: string | null;
-            village?: string | null;
-          };
-          if (!response.ok) throw new Error(details.message || "Location lookup failed.");
+          const details = await fetchLocationDetails(latitude, longitude);
           setForm((current) => ({
             ...current,
             ...coordinateFields,
@@ -626,7 +670,9 @@ function SubmitBar({ saving, state }: { saving: boolean; state: SubmitState }) {
 
 function TextField({
   help,
+  inputMode,
   label,
+  maxLength,
   onChange,
   placeholder,
   required,
@@ -634,7 +680,9 @@ function TextField({
   value,
 }: {
   help?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   label: string;
+  maxLength?: number;
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
@@ -645,6 +693,8 @@ function TextField({
     <Field help={help} label={label} required={required}>
       <input
         className={inputClass}
+        inputMode={inputMode}
+        maxLength={maxLength}
         placeholder={placeholder}
         required={required}
         type={type}
@@ -653,6 +703,23 @@ function TextField({
       />
     </Field>
   );
+}
+
+type LocationDetails = {
+  altitudeMeters?: number | null;
+  district?: string | null;
+  message?: string;
+  state?: string | null;
+  village?: string | null;
+};
+
+async function fetchLocationDetails(latitude: number, longitude: number): Promise<LocationDetails> {
+  const response = await fetch(
+    `/api/location-details?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`,
+  );
+  const details = (await response.json()) as LocationDetails;
+  if (!response.ok) throw new Error(details.message || "Location lookup failed.");
+  return details;
 }
 
 function optionalNumber(value: string): number | null {
