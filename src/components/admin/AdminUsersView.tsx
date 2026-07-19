@@ -216,6 +216,8 @@ function UserEditor({
   onSaved: () => Promise<void>;
 }) {
   const existing = editor.mode === "edit" ? editor.user : null;
+  const isFieldOfficerCreate =
+    editor.mode === "create" && editor.role === "FIELD_OFFICER";
   const [name, setName] = useState(existing?.name ?? "");
   const [email, setEmail] = useState(existing?.email ?? "");
   const [phone, setPhone] = useState(existing?.phone ?? "");
@@ -226,8 +228,13 @@ function UserEditor({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+    const phoneDigits = phone.replace(/\D/g, "");
     if (!name.trim() || !email.trim() || !phone.trim() || (!existing && !password)) {
       setError("Please fill all required user fields.");
+      return;
+    }
+    if (isFieldOfficerCreate && phoneDigits.length !== 10) {
+      setError("Phone number must contain exactly 10 digits.");
       return;
     }
     setSaving(true);
@@ -243,7 +250,7 @@ function UserEditor({
         const payload: CreateInternalUserRequest = {
           name: name.trim(),
           email: email.trim(),
-          phone: phone.trim(),
+          phone: isFieldOfficerCreate ? phoneDigits : phone.trim(),
           role: editor.role,
           initialPassword: password,
         };
@@ -277,11 +284,19 @@ function UserEditor({
               onChange={(e) => setEmail(e.target.value)}
             />
           </Field>
-          <Field label="Phone" required>
+          <Field help={isFieldOfficerCreate ? "10 digits only" : undefined} label="Phone" required>
             <input
               className={inputClass}
+              inputMode={isFieldOfficerCreate ? "numeric" : undefined}
+              maxLength={isFieldOfficerCreate ? 10 : undefined}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) =>
+                setPhone(
+                  isFieldOfficerCreate
+                    ? e.target.value.replace(/\D/g, "").slice(0, 10)
+                    : e.target.value,
+                )
+              }
             />
           </Field>
           {!existing ? (
