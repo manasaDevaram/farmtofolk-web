@@ -56,6 +56,20 @@ export function mediaSrc(media?: PublicTraceMedia | null): string | null {
   return cleanMediaUrl(media.mediaUrl);
 }
 
+export function mediaThumbnailSrc(media?: PublicTraceMedia | null): string | null {
+  if (!media) return null;
+  if ("thumbnailUrl" in media && media.thumbnailUrl) {
+    return cleanMediaUrl(media.thumbnailUrl);
+  }
+  return null;
+}
+
+export function farmerPhotoThumbnailSrc(
+  farmer?: { profilePhotoThumbnailUrl?: string | null } | null,
+): string | null {
+  return cleanMediaUrl(farmer?.profilePhotoThumbnailUrl);
+}
+
 export function isVideo(media?: PublicTraceMedia | null): boolean {
   if (!media) return false;
   const mediaType = "fileType" in media ? media.fileType : media.mediaType;
@@ -85,13 +99,19 @@ export function FieldRow({ label, value }: { label: string; value?: string | num
 export function MediaTile({
   alt,
   className = "",
+  loadOnActivate = false,
+  loading = "lazy",
   media,
 }: {
   alt: string;
   className?: string;
+  loadOnActivate?: boolean;
+  loading?: "lazy" | "eager";
   media?: PublicTraceMedia | null;
 }) {
   const src = mediaSrc(media);
+  const thumbnailSrc = mediaThumbnailSrc(media);
+  const video = isVideo(media);
 
   return (
     <div
@@ -101,8 +121,11 @@ export function MediaTile({
         <SignedMedia
           alt={alt}
           className="absolute inset-0 h-full w-full object-cover"
-          kind={isVideo(media) ? "video" : "image"}
+          kind={video ? "video" : "image"}
+          loadOnActivate={video || loadOnActivate}
+          loading={loading}
           src={src}
+          thumbnailSrc={thumbnailSrc}
         />
       ) : null}
       {!src ? (
@@ -110,7 +133,7 @@ export function MediaTile({
           <LeafIcon className="h-8 w-8" />
         </div>
       ) : null}
-      {isVideo(media) ? (
+      {isVideo(media) && !loadOnActivate ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/15">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-emerald-800 shadow-sm">
             <PlayIcon className="h-4 w-4 translate-x-0.5" />

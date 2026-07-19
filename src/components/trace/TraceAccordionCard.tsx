@@ -16,7 +16,7 @@ export function TraceAccordionCard({
   children?: ReactNode;
   defaultOpen?: boolean;
   icon: ReactNode;
-  openContent: ReactNode;
+  openContent: ReactNode | ((context: { isOpen: boolean }) => ReactNode);
   summary: ReactNode;
   title: string;
 }) {
@@ -55,7 +55,7 @@ export function TraceAccordionCard({
           className="border-t border-stone-100 px-4 pb-4 pt-3 sm:px-5 sm:pb-5"
           id={contentId}
         >
-          {openContent}
+          {typeof openContent === "function" ? openContent({ isOpen }) : openContent}
         </div>
       ) : null}
     </section>

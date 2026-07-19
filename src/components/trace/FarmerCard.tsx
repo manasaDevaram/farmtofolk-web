@@ -1,7 +1,7 @@
 import type { PublicTraceFarmer } from "@/types/public-trace";
 import { SignedMedia } from "@/components/SignedMedia";
 import { TraceAccordionCard } from "./TraceAccordionCard";
-import { CheckIcon, compactLocation, FieldRow, formatDate, LeafIcon } from "./trace-utils";
+import { CheckIcon, compactLocation, farmerPhotoThumbnailSrc, FieldRow, formatDate, LeafIcon } from "./trace-utils";
 
 export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
   const location = compactLocation(farmer?.village, farmer?.district, farmer?.state);
@@ -17,13 +17,15 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
             alt={`${farmer.name || "Farmer"} profile photo`}
             className="h-full w-full object-cover"
             kind="image"
+            loading="lazy"
             src={farmer.profilePhotoUrl}
+            thumbnailSrc={farmerPhotoThumbnailSrc(farmer)}
           />
         ) : (
           <LeafIcon className="h-9 w-9" />
         )
       }
-      openContent={
+      openContent={({ isOpen }) => (
         <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr_1fr]">
           <dl>
             <FieldRow label="Joined" value={formatDate(farmer?.joinedDate)} />
@@ -35,20 +37,24 @@ export function FarmerCard({ farmer }: { farmer?: PublicTraceFarmer | null }) {
               {farmer?.bio || "This farmer profile is being enriched with more public details."}
             </p>
           </div>
-          {farmer?.introVideoUrl ? (
+          {farmer?.introVideoUrl && isOpen ? (
             <SignedMedia
               alt={`${farmer.name || "Farmer"} introduction video`}
               className="aspect-video w-full rounded-3xl bg-stone-950 object-cover"
               kind="video"
               src={farmer.introVideoUrl}
             />
+          ) : farmer?.introVideoUrl ? (
+            <div className="flex aspect-video w-full items-center justify-center rounded-3xl bg-stone-100 px-4 text-center text-sm text-stone-600">
+              Expand this section to play the farmer intro video.
+            </div>
           ) : (
             <div className="rounded-3xl bg-stone-50 p-4 text-sm text-stone-600">
               Farmer intro video is not available yet.
             </div>
           )}
         </div>
-      }
+      )}
       summary={
         <>
           <p className="font-bold text-stone-950">{farmer?.name || "Farmer details unavailable"}</p>

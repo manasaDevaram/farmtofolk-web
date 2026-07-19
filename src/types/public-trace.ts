@@ -41,6 +41,7 @@ export interface PublicTraceFarmer {
   state: string;
   bio: Nullable<string>;
   profilePhotoUrl: Nullable<string>;
+  profilePhotoThumbnailUrl?: Nullable<string>;
   introVideoUrl: Nullable<string>;
   joinedDate: string;
   active: boolean;
@@ -79,6 +80,7 @@ export interface PublicTraceVerificationEvidence {
   verificationId: string;
   fileType: PublicTraceMediaType;
   fileUrl: string;
+  thumbnailUrl?: Nullable<string>;
   fileHash: Nullable<string>;
   caption: Nullable<string>;
   isPublic: boolean;
@@ -92,6 +94,7 @@ export interface PublicTraceFarmMedia {
   farmId: string;
   mediaType: PublicTraceMediaType;
   mediaUrl: string;
+  thumbnailUrl?: Nullable<string>;
   caption: Nullable<string>;
   isPublic: boolean;
   createdAt: string;

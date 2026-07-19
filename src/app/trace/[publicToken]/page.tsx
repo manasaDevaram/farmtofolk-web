@@ -29,6 +29,14 @@ export default async function PublicTracePage({
     return <ErrorState message={trace.error} />;
   }
 
+  const publicFarmMedia =
+    trace.farmMedia?.filter((item) => item.isPublic !== false) ?? trace.farmMedia ?? [];
+  const heroMedia = publicFarmMedia.find(
+    (item) => !String(item.mediaType ?? "").toLowerCase().includes("video"),
+  );
+  const heroMediaId = heroMedia?.id ?? null;
+  const galleryMedia = publicFarmMedia.filter((item) => item.id !== heroMediaId);
+
   return (
     <main className="trace-page min-h-screen px-3 py-3 text-[var(--ftf-text)] sm:px-6 sm:py-6">
       <div className="trace-surface mx-auto max-w-[1100px] rounded-[30px] border border-[var(--ftf-border)] p-4 backdrop-blur sm:p-8">
@@ -51,17 +59,17 @@ export default async function PublicTracePage({
           </button>
         </header>
 
-        <TraceHero batch={trace.batch} farmMedia={trace.farmMedia} />
+        <TraceHero batch={trace.batch} farmMedia={publicFarmMedia} />
 
         <div className="mt-4 space-y-4">
           <FarmerCard farmer={trace.farmer} />
-          <FarmCard farm={trace.farm} farmMedia={trace.farmMedia} />
+          <FarmCard farm={trace.farm} farmMedia={galleryMedia} />
           <VerificationCard
             evidence={trace.verificationEvidence}
             verification={trace.verification}
           />
           <MoneyBreakdownCard batch={trace.batch} priceBreakdown={trace.priceBreakdown} />
-          <FarmMediaCard farmMedia={trace.farmMedia} />
+          <FarmMediaCard farmMedia={galleryMedia} />
           <TrustSummaryCard trace={trace} />
           <ProductDetailsCard batch={trace.batch} traceEvents={trace.traceEvents} />
         </div>

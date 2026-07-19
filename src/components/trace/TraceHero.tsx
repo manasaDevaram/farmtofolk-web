@@ -1,6 +1,6 @@
 import type { PublicTraceBatch, PublicTraceMedia } from "@/types/public-trace";
 import { SignedMedia } from "@/components/SignedMedia";
-import { CheckIcon, isVideo, mediaSrc } from "./trace-utils";
+import { CheckIcon, isVideo, mediaSrc, mediaThumbnailSrc } from "./trace-utils";
 
 export function TraceHero({
   batch,
@@ -11,10 +11,9 @@ export function TraceHero({
 }) {
   const cropName = batch?.cropName || "Fresh Produce";
   const publicMedia = farmMedia?.filter((item) => item.isPublic !== false) ?? farmMedia ?? [];
-  const heroMedia =
-    publicMedia.find((item) => !isVideo(item)) ?? publicMedia.find((item) => isVideo(item));
+  const heroMedia = publicMedia.find((item) => !isVideo(item));
   const heroSrc = mediaSrc(heroMedia);
-  const heroIsVideo = isVideo(heroMedia);
+  const heroThumbnail = mediaThumbnailSrc(heroMedia);
 
   return (
     <section className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-emerald-950 shadow-[0_20px_50px_rgba(32,72,45,0.16)]">
@@ -22,9 +21,11 @@ export function TraceHero({
         <SignedMedia
           alt="Featured farm media"
           className="absolute inset-0 h-full w-full object-cover"
-          kind={heroIsVideo ? "video" : "image"}
-          presentation={heroIsVideo ? "background" : "default"}
+          kind="image"
+          loading="eager"
+          priority
           src={heroSrc}
+          thumbnailSrc={heroThumbnail}
         />
       ) : null}
       <div
