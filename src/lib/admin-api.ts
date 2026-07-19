@@ -239,6 +239,24 @@ export const farmerDashboardApi = {
 export const farmerApi = {
   create: (payload: FarmerPayload) =>
     request<Farmer>("/api/farmers", { body: asJson(payload), method: "POST" }),
+  createWithMedia: (
+    payload: FarmerPayload,
+    media: { profilePhoto: File; introVideo: File },
+  ) => {
+    const formData = new FormData();
+    formData.append(
+      "farmer",
+      new Blob([asJson({ ...payload, introVideoUrl: null, profilePhotoUrl: null })], {
+        type: "application/json",
+      }),
+    );
+    formData.append("profilePhoto", media.profilePhoto);
+    formData.append("introVideo", media.introVideo);
+    return request<Farmer>("/api/farmers/with-media", {
+      body: formData,
+      method: "POST",
+    });
+  },
   get: (farmerId: string) => request<Farmer>(`/api/farmers/${farmerId}`),
   list: () => request<Farmer[]>("/api/farmers"),
   update: (farmerId: string, payload: FarmerPayload) =>

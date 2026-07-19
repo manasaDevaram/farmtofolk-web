@@ -116,6 +116,14 @@ export function FarmerForm({
       setState({ error: "Phone number must contain exactly 10 digits." });
       return;
     }
+    if (isAddMode && !profilePhotoFile) {
+      setState({ error: "Profile photo is required." });
+      return;
+    }
+    if (isAddMode && !introVideoFile) {
+      setState({ error: "Intro video is required." });
+      return;
+    }
     setSaving(true);
     try {
       await onSubmit(
@@ -223,6 +231,7 @@ export function FarmerForm({
               onFile={setProfilePhotoFile}
               previewType="image"
               previewUrl={profilePhotoPreview}
+              required
             />
             <MediaFilePicker
               accept="video/mp4,video/quicktime,video/webm"
@@ -231,6 +240,7 @@ export function FarmerForm({
               onFile={setIntroVideoFile}
               previewType="video"
               previewUrl={introVideoPreview}
+              required
             />
           </div>
         ) : null}
@@ -243,7 +253,11 @@ export function FarmerForm({
           Active farmer
         </label>
       </Card>
-      <SubmitBar saving={saving} state={state} />
+      <SubmitBar
+        saving={saving}
+        savingLabel={isAddMode ? "Uploading and saving..." : "Saving..."}
+        state={state}
+      />
     </form>
   );
 }
@@ -688,7 +702,15 @@ export function BatchForm({
   );
 }
 
-function SubmitBar({ saving, state }: { saving: boolean; state: SubmitState }) {
+function SubmitBar({
+  saving,
+  savingLabel = "Saving...",
+  state,
+}: {
+  saving: boolean;
+  savingLabel?: string;
+  state: SubmitState;
+}) {
   return (
     <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -696,7 +718,7 @@ function SubmitBar({ saving, state }: { saving: boolean; state: SubmitState }) {
         {state.success ? <p className="font-bold text-emerald-700">{state.success}</p> : null}
       </div>
       <Button disabled={saving} type="submit">
-        {saving ? "Saving..." : "Save"}
+        {saving ? savingLabel : "Save"}
       </Button>
     </Card>
   );
@@ -763,6 +785,7 @@ function MediaFilePicker({
   onFile,
   previewType,
   previewUrl,
+  required = false,
 }: {
   accept: string;
   file: File | null;
@@ -770,10 +793,14 @@ function MediaFilePicker({
   onFile: (file: File | null) => void;
   previewType: "image" | "video";
   previewUrl: string | null;
+  required?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-      <p className="text-sm font-black text-stone-900">{label}</p>
+      <p className="text-sm font-black text-stone-900">
+        {label}
+        {required ? <span className="text-red-700"> *</span> : null}
+      </p>
       <div className="mt-3 grid gap-3">
         {previewUrl ? (
           previewType === "image" ? (
