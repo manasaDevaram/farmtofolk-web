@@ -36,7 +36,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="ftf-paper min-h-screen text-[var(--ftf-text)] md:grid md:grid-cols-[230px_1fr]">
       <aside className="sticky top-0 hidden h-screen border-r border-[var(--ftf-border)] bg-[rgba(252,250,245,.86)] px-4 py-5 backdrop-blur md:flex md:flex-col">
-        <Link className="flex items-center gap-2 px-2 text-[var(--ftf-green-900)]" href="/admin">
+        <Link
+          className="flex items-center gap-2 px-2 text-[var(--ftf-green-900)]"
+          href={currentUser?.role === "FIELD_OFFICER" ? "/field" : "/admin"}
+        >
           <LeafMark className="h-10 w-10" />
           <span className="ftf-display text-xl font-bold">{BRAND_NAME}</span>
         </Link>
@@ -108,7 +111,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
 }
 
 function isActivePath(pathname: string, href: string) {
-  return href === "/admin" ? pathname === href : pathname.startsWith(href);
+  if (href === "/admin" || href === "/field") {
+    return pathname === href;
+  }
+  return pathname.startsWith(href);
 }
 
 function NavLink({
