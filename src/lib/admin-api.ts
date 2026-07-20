@@ -241,7 +241,7 @@ export const farmerApi = {
     request<Farmer>("/api/farmers", { body: asJson(payload), method: "POST" }),
   createWithMedia: (
     payload: FarmerPayload,
-    media: { profilePhoto: File; introVideo: File },
+    media: { profilePhoto?: File | null; introVideo?: File | null },
   ) => {
     const formData = new FormData();
     formData.append(
@@ -250,8 +250,12 @@ export const farmerApi = {
         type: "application/json",
       }),
     );
-    formData.append("profilePhoto", media.profilePhoto);
-    formData.append("introVideo", media.introVideo);
+    if (media.profilePhoto) {
+      formData.append("profilePhoto", media.profilePhoto);
+    }
+    if (media.introVideo) {
+      formData.append("introVideo", media.introVideo);
+    }
     return request<Farmer>("/api/farmers/with-media", {
       body: formData,
       method: "POST",

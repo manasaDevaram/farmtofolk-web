@@ -258,13 +258,13 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
           initial={farmer}
           onSubmit={async (payload, active, media) => {
             if (!farmerId) {
-              if (!media?.profilePhoto || !media?.introVideo) {
-                throw new Error("Profile photo and intro video are required.");
-              }
-              const saved = await farmerApi.createWithMedia(payload, {
-                profilePhoto: media.profilePhoto,
-                introVideo: media.introVideo,
-              });
+              const hasMedia = Boolean(media?.profilePhoto || media?.introVideo);
+              const saved = hasMedia
+                ? await farmerApi.createWithMedia(payload, {
+                    profilePhoto: media?.profilePhoto ?? null,
+                    introVideo: media?.introVideo ?? null,
+                  })
+                : await farmerApi.create(payload);
               if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
               router.push(`/admin/farmers/${saved.id}`);
               return;

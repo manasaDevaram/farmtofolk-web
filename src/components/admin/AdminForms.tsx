@@ -116,14 +116,6 @@ export function FarmerForm({
       setState({ error: "Phone number must contain exactly 10 digits." });
       return;
     }
-    if (isAddMode && !profilePhotoFile) {
-      setState({ error: "Profile photo is required." });
-      return;
-    }
-    if (isAddMode && !introVideoFile) {
-      setState({ error: "Intro video is required." });
-      return;
-    }
     setSaving(true);
     try {
       await onSubmit(
@@ -231,7 +223,6 @@ export function FarmerForm({
               onFile={setProfilePhotoFile}
               previewType="image"
               previewUrl={profilePhotoPreview}
-              required
             />
             <MediaFilePicker
               accept="video/mp4,video/quicktime,video/webm"
@@ -240,7 +231,6 @@ export function FarmerForm({
               onFile={setIntroVideoFile}
               previewType="video"
               previewUrl={introVideoPreview}
-              required
             />
           </div>
         ) : null}
@@ -255,7 +245,11 @@ export function FarmerForm({
       </Card>
       <SubmitBar
         saving={saving}
-        savingLabel={isAddMode ? "Uploading and saving..." : "Saving..."}
+        savingLabel={
+          isAddMode && (profilePhotoFile || introVideoFile)
+            ? "Uploading and saving..."
+            : "Saving..."
+        }
         state={state}
       />
     </form>
