@@ -10,6 +10,57 @@ type SubmitState = { error?: string; success?: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const DEFAULT_FARMING_TYPES = [
+  "NATURAL_FARMING",
+  "ORGANIC",
+  "REGENERATIVE",
+  "PERMACULTURE",
+  "BIODYNAMIC",
+  "CONVENTIONAL",
+  "MIXED",
+];
+
+const FARMING_TYPE_STORAGE_KEY = "ftf.farming-types";
+
+export function mergeFarmingTypeOptions(existingValues: string[] = []) {
+  let stored: string[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(FARMING_TYPE_STORAGE_KEY);
+      stored = raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      stored = [];
+    }
+  }
+  return [...new Set([...DEFAULT_FARMING_TYPES, ...stored, ...existingValues].filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b),
+  );
+}
+
+export function rememberFarmingType(value: string) {
+  const normalized = value.trim();
+  if (!normalized || typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(FARMING_TYPE_STORAGE_KEY);
+    const stored = raw ? (JSON.parse(raw) as string[]) : [];
+    if (stored.some((item) => item.toLowerCase() === normalized.toLowerCase())) return;
+    localStorage.setItem(
+      FARMING_TYPE_STORAGE_KEY,
+      JSON.stringify([...stored, normalized].sort((a, b) => a.localeCompare(b))),
+    );
+  } catch {
+    // Ignore storage failures; options still come from defaults and loaded farms.
+  }
+}
+
+export function farmerPayloadKey(payload: FarmerPayload, active: boolean) {
+  return JSON.stringify({ ...payload, active });
+}
+
+export function fileFingerprint(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
 type FarmFormState = Omit<
   FarmPayload,
   "latitude" | "longitude" | "altitudeMeters" | "sizeAcres"
@@ -247,7 +298,7 @@ export function FarmerForm({
         saving={saving}
         savingLabel={
           isAddMode && (profilePhotoFile || introVideoFile)
-            ? "Uploading and saving..."
+            ? "Saving and uploading..."
             : "Saving..."
         }
         state={state}
@@ -259,14 +310,18 @@ export function FarmerForm({
 // FarmForm supports both free farmer selection and locked farmer deep links.
 export function FarmForm({
   farmers,
+  farmingTypeOptions,
   initial,
   lockedFarmerId,
+  onFarmingTypeUsed,
   onUnlockFarmer,
   onSubmit,
 }: {
   farmers: Farmer[];
+  farmingTypeOptions?: string[];
   initial?: Farm | null;
   lockedFarmerId?: string | null;
+  onFarmingTypeUsed?: (farmingType: string) => void;
   onSubmit: (payload: FarmPayload) => Promise<void>;
   onUnlockFarmer?: () => void;
 }) {
@@ -360,13 +415,16 @@ export function FarmForm({
     }
     setSaving(true);
     try {
-      await onSubmit({
+      const payload = {
         ...form,
+        farmingType: form.farmingType.trim(),
         latitude: optionalNumber(form.latitude),
         longitude: optionalNumber(form.longitude),
         altitudeMeters: optionalNumber(form.altitudeMeters),
         sizeAcres,
-      });
+      };
+      await onSubmit(payload);
+      onFarmingTypeUsed?.(payload.farmingType);
       setState({ success: "Farm saved successfully." });
     } catch (error) {
       setState({ error: error instanceof Error ? error.message : "Save failed." });
@@ -408,12 +466,13 @@ export function FarmForm({
             value={form.farmName}
             onChange={(farmName) => setForm({ ...form, farmName })}
           />
-          <TextField
+          <CreatableCombobox
             label="Farming Type"
+            onChange={(farmingType) => setForm({ ...form, farmingType })}
+            options={farmingTypeOptions ?? DEFAULT_FARMING_TYPES}
+            placeholder="Choose or add a farming type"
             required
             value={form.farmingType}
-            onChange={(farmingType) => setForm({ ...form, farmingType })}
-            help="Example: NATURAL_FARMING"
           />
           <TextField
             label="Size Acres"

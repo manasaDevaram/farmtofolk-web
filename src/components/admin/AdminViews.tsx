@@ -45,7 +45,7 @@ import type {
 import { cleanMediaUrl } from "@/lib/media-url";
 import { BRAND_NAME } from "@/lib/constants";
 import { API_BASE_URL } from "@/lib/api-config";
-import { BatchForm, FarmerForm, FarmForm } from "./AdminForms";
+import { BatchForm, FarmerForm, FarmForm, farmerPayloadKey, fileFingerprint, mergeFarmingTypeOptions, rememberFarmingType } from "./AdminForms";
 import { DashboardSummaryView } from "./AdminDashboardCards";
 import {
   AdminShell,
@@ -238,6 +238,10 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [loading, setLoading] = useState(Boolean(farmerId));
   const [error, setError] = useState("");
+  const [draftFarmerId, setDraftFarmerId] = useState<string | null>(null);
+  const [savedPayloadKey, setSavedPayloadKey] = useState<string | null>(null);
+  const [uploadedPhotoFingerprint, setUploadedPhotoFingerprint] = useState<string | null>(null);
+  const [uploadedVideoFingerprint, setUploadedVideoFingerprint] = useState<string | null>(null);
 
   useEffect(() => {
     if (!farmerId) return;
@@ -258,14 +262,50 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
           initial={farmer}
           onSubmit={async (payload, active, media) => {
             if (!farmerId) {
-              const hasMedia = Boolean(media?.profilePhoto || media?.introVideo);
-              const saved = hasMedia
-                ? await farmerApi.createWithMedia(payload, {
-                    profilePhoto: media?.profilePhoto ?? null,
-                    introVideo: media?.introVideo ?? null,
-                  })
-                : await farmerApi.create(payload);
-              if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
+              const payloadKey = farmerPayloadKey(payload, active);
+              const photoFingerprint = media?.profilePhoto
+                ? fileFingerprint(media.profilePhoto)
+                : null;
+              const videoFingerprint = media?.introVideo ? fileFingerprint(media.introVideo) : null;
+              const detailsChanged = !draftFarmerId || savedPayloadKey !== payloadKey;
+              let saved: Farmer;
+
+              if (detailsChanged) {
+                saved = draftFarmerId
+                  ? await farmerApi.update(draftFarmerId, payload)
+                  : await farmerApi.create(payload);
+                setDraftFarmerId(saved.id);
+                if (saved.active !== active) {
+                  saved = await farmerApi.updateStatus(saved.id, active);
+                }
+                setSavedPayloadKey(payloadKey);
+              } else {
+                saved = await farmerApi.get(draftFarmerId);
+                if (saved.active !== active) {
+                  saved = await farmerApi.updateStatus(saved.id, active);
+                  setSavedPayloadKey(payloadKey);
+                }
+              }
+
+              const uploads: Promise<void>[] = [];
+              if (media?.profilePhoto && photoFingerprint !== uploadedPhotoFingerprint) {
+                uploads.push(
+                  farmerApi.uploadProfilePhoto(saved.id, media.profilePhoto).then(() => {
+                    setUploadedPhotoFingerprint(photoFingerprint);
+                  }),
+                );
+              }
+              if (media?.introVideo && videoFingerprint !== uploadedVideoFingerprint) {
+                uploads.push(
+                  farmerApi.uploadIntroVideo(saved.id, media.introVideo).then(() => {
+                    setUploadedVideoFingerprint(videoFingerprint);
+                  }),
+                );
+              }
+              if (uploads.length) {
+                await Promise.all(uploads);
+              }
+
               router.push(`/admin/farmers/${saved.id}`);
               return;
             }
@@ -496,15 +536,25 @@ export function FarmFormView({ farmId }: { farmId?: string }) {
   const farmerId = search.get("farmerId");
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [farm, setFarm] = useState<Farm | null>(null);
+  const [farmingTypeOptions, setFarmingTypeOptions] = useState<string[]>(() =>
+    mergeFarmingTypeOptions(),
+  );
   const [lockedFarmer, setLockedFarmer] = useState(farmerId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([farmerApi.list(), farmId ? farmApi.get(farmId) : Promise.resolve(null)])
-      .then(([nextFarmers, nextFarm]) => {
+    Promise.all([
+      farmerApi.list(),
+      farmId ? farmApi.get(farmId) : Promise.resolve(null),
+      listAllFarms(),
+    ])
+      .then(([nextFarmers, nextFarm, allFarms]) => {
         setFarmers(nextFarmers);
         setFarm(nextFarm);
+        setFarmingTypeOptions(
+          mergeFarmingTypeOptions(allFarms.map((item) => item.farmingType)),
+        );
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -518,8 +568,17 @@ export function FarmFormView({ farmId }: { farmId?: string }) {
       {!loading && !error ? (
         <FarmForm
           farmers={farmers}
+          farmingTypeOptions={farmingTypeOptions}
           initial={farm}
           lockedFarmerId={lockedFarmer}
+          onFarmingTypeUsed={(farmingType) => {
+            rememberFarmingType(farmingType);
+            setFarmingTypeOptions((current) =>
+              current.some((item) => item.toLowerCase() === farmingType.toLowerCase())
+                ? current
+                : [...current, farmingType].sort((a, b) => a.localeCompare(b)),
+            );
+          }}
           onSubmit={async (payload) => {
             const saved = farmId
               ? await farmApi.update(farmId, payload)
