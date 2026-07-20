@@ -34,6 +34,7 @@ import type {
   CreateBatchUsagePayload,
   Farm,
   Farmer,
+  FarmerPayload,
   FarmMedia,
   FarmVerification,
   FarmWithFarmer,
