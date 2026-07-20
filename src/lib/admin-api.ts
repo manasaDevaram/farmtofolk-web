@@ -18,6 +18,8 @@ import type {
   QrCode,
   PriceBreakdown,
   PriceBreakdownPayload,
+  ProcuredBatchPayload,
+  SowingBatchPayload,
   TraceEvent,
   TraceEventPayload,
   VerificationEvidence,
@@ -350,14 +352,22 @@ export const farmApi = {
     }),
 };
 
-// Batch APIs support create, edit, and farmer/farm scoped batch lookup.
+// Batch APIs support sowing/procured create, edit, and scoped lookup.
 export const batchApi = {
-  create: (payload: BatchPayload) =>
-    request<Batch>("/api/batches", { body: asJson(payload), method: "POST" }),
+  createProcured: (payload: ProcuredBatchPayload) =>
+    request<Batch>("/api/batches/procured", { body: asJson(payload), method: "POST" }),
+  createSowing: (payload: SowingBatchPayload) =>
+    request<Batch>("/api/batches/sowing", { body: asJson(payload), method: "POST" }),
   get: (batchId: string) => request<Batch>(`/api/batches/${batchId}`),
-  list: () => request<BatchListItem[]>("/api/batches"),
+  list: (params?: { batchType?: "SOWING" | "PROCURED" }) => {
+    const query = params?.batchType ? `?batchType=${params.batchType}` : "";
+    return request<BatchListItem[]>(`/api/batches${query}`);
+  },
   listByFarm: (farmId: string) => request<Batch[]>(`/api/farms/${farmId}/batches`),
   listByFarmer: (farmerId: string) => request<Batch[]>(`/api/farmers/${farmerId}/batches`),
+  listProcuredBySowing: (sowingBatchId: string) =>
+    request<Batch[]>(`/api/batches/${sowingBatchId}/procured-batches`),
+  listSowingByFarm: (farmId: string) => request<Batch[]>(`/api/farms/${farmId}/sowing-batches`),
   update: (batchId: string, payload: BatchPayload) =>
     request<Batch>(`/api/batches/${batchId}`, {
       body: asJson(payload),

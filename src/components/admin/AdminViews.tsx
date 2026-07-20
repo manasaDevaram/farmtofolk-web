@@ -48,7 +48,7 @@ import type {
 import { cleanMediaUrl } from "@/lib/media-url";
 import { BRAND_NAME } from "@/lib/constants";
 import { API_BASE_URL } from "@/lib/api-config";
-import { BatchForm, FarmerForm, FarmForm, clearAddFarmerDraft, farmerPayloadKey, fileFingerprint, loadAddFarmerDraft, mergeFarmingTypeOptions, persistAddFarmerDraft, rememberFarmingType } from "./AdminForms";
+import { FarmerForm, FarmForm, ProcuredBatchForm, SowingBatchForm, clearAddFarmerDraft, farmerPayloadKey, fileFingerprint, loadAddFarmerDraft, mergeFarmingTypeOptions, persistAddFarmerDraft, rememberFarmingType } from "./AdminForms";
 import { DashboardSummaryView } from "./AdminDashboardCards";
 import {
   AdminShell,
@@ -501,8 +501,11 @@ export function FarmerDetailView({ farmerId }: { farmerId: string }) {
                 <ButtonLink href={`/admin/farms/new?farmerId=${farmer.id}`} variant="secondary">
                   Add Farm
                 </ButtonLink>
-                <ButtonLink href={`/admin/batches/new?farmerId=${farmer.id}`} variant="secondary">
-                  Add Batch
+                <ButtonLink href={`/admin/batches/new/sowing?farmerId=${farmer.id}`} variant="secondary">
+                  Add Sowing
+                </ButtonLink>
+                <ButtonLink href={`/admin/batches/new/procured?farmerId=${farmer.id}`} variant="secondary">
+                  Add Procurement
                 </ButtonLink>
               </>
             }
@@ -679,9 +682,17 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
                   Edit
                 </ButtonLink>
                 {farm.active !== false ? (
-                  <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}>
-                    Add Batch
-                  </ButtonLink>
+                  <>
+                    <ButtonLink
+                      href={`/admin/batches/new/sowing?farmerId=${farm.farmerId}&farmId=${farm.id}`}
+                      variant="secondary"
+                    >
+                      Add Sowing
+                    </ButtonLink>
+                    <ButtonLink href={`/admin/batches/new/procured?farmerId=${farm.farmerId}&farmId=${farm.id}`}>
+                      Add Procurement
+                    </ButtonLink>
+                  </>
                 ) : null}
                 <Button
                   onClick={() => void toggle(farm)}
@@ -841,12 +852,19 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
               <>
                 <ButtonLink href={`/admin/farms/${farm.id}/edit`}>Edit Farm</ButtonLink>
                 {farm.active !== false ? (
-                  <ButtonLink
-                    href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}
-                    variant="secondary"
-                  >
-                    Add Batch
-                  </ButtonLink>
+                  <>
+                    <ButtonLink
+                      href={`/admin/batches/new/sowing?farmerId=${farm.farmerId}&farmId=${farm.id}`}
+                      variant="secondary"
+                    >
+                      Add Sowing
+                    </ButtonLink>
+                    <ButtonLink
+                      href={`/admin/batches/new/procured?farmerId=${farm.farmerId}&farmId=${farm.id}`}
+                    >
+                      Add Procurement
+                    </ButtonLink>
+                  </>
                 ) : null}
                 <Button
                   onClick={() => void toggleStatus()}
@@ -1681,7 +1699,14 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
   return (
     <AdminShell>
       <PageHeader
-        actions={<ButtonLink href="/admin/batches/new">Add Batch</ButtonLink>}
+        actions={
+          <>
+            <ButtonLink href="/admin/batches/new/sowing">Add Sowing</ButtonLink>
+            <ButtonLink href="/admin/batches/new/procured" variant="secondary">
+              Add Procurement
+            </ButtonLink>
+          </>
+        }
         title="Batches"
       />
       {loading ? <LoadingState /> : null}
@@ -1704,17 +1729,23 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-black">{batch.batchCode}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black">{batch.batchCode}</h2>
+                  <span className="ftf-stamp">
+                    {batch.batchType === "SOWING" ? "Sowing" : "Procurement"}
+                  </span>
+                </div>
                 <p className="font-bold text-stone-600">
-                  {batch.cropName} - {batch.variety || "No variety"} - {batch.quantityReceived}{" "}
-                  {batch.unit} received
+                  {batch.cropName} - {batch.variety || "No variety"}
                 </p>
                 <p className="text-sm text-stone-500">
                   {batch.farmer?.name || batch.farmerName || "Unknown farmer"} /{" "}
                   {batch.farm?.farmName || batch.farmName || "Unknown farm"}
                 </p>
                 <p className="text-xs text-stone-400">
-                  Harvest {batch.harvestDate} - {batch.status}
+                  {batch.batchType === "SOWING"
+                    ? `${batch.acresSown ?? "?"} acres sown on ${batch.sowingDate ?? "unknown"} · ${batch.status}`
+                    : `${batch.quantityReceived ?? 0} ${batch.unit} received · ${batch.status}`}
                 </p>
               </div>
               <div
@@ -1733,7 +1764,114 @@ export function BatchesListView({ farmId, farmerId }: { farmId?: string; farmerI
   );
 }
 
-// BatchFormView handles batch create/edit with optional farmer/farm query prefill.
+// SowingBatchFormView registers a crop cycle and generates the QR sticker.
+export function SowingBatchFormView() {
+  const router = useRouter();
+  const search = useSearchParams();
+  const lockedFarmerId = search.get("farmerId");
+  const lockedFarmId = search.get("farmId");
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [batchOptions, setBatchOptions] = useState<Batch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([farmerApi.list(), listAllFarms(), batchApi.list()])
+      .then(([nextFarmers, nextFarms, nextBatchOptions]) => {
+        setFarmers(nextFarmers);
+        setFarms(nextFarms);
+        setBatchOptions(nextBatchOptions);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <AdminShell>
+      <PageHeader title="Add Sowing Batch" />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
+      {!loading && !error ? (
+        <SowingBatchForm
+          cropOptions={batchOptions.map((item) => item.cropName)}
+          farmers={farmers}
+          farms={farms}
+          lockedFarmerId={lockedFarmerId}
+          lockedFarmId={lockedFarmId}
+          varietyOptions={batchOptions
+            .map((item) => item.variety)
+            .filter((value): value is string => Boolean(value))}
+          onSubmit={async (payload) => {
+            const saved = await batchApi.createSowing(payload);
+            router.push(`/admin/batches/${saved.id}`);
+          }}
+        />
+      ) : null}
+    </AdminShell>
+  );
+}
+
+// ProcuredBatchFormView records produce received and links it to a sowing batch.
+export function ProcuredBatchFormView() {
+  const router = useRouter();
+  const search = useSearchParams();
+  const lockedFarmerId = search.get("farmerId");
+  const lockedFarmId = search.get("farmId");
+  const parentBatchId = search.get("parentBatchId");
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [batchOptions, setBatchOptions] = useState<Batch[]>([]);
+  const [sowingBatches, setSowingBatches] = useState<Batch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      farmerApi.list(),
+      listAllFarms(),
+      batchApi.list(),
+      batchApi.list({ batchType: "SOWING" }),
+    ])
+      .then(([nextFarmers, nextFarms, nextBatchOptions, nextSowingBatches]) => {
+        setFarmers(nextFarmers);
+        setFarms(nextFarms);
+        setBatchOptions(nextBatchOptions);
+        setSowingBatches(nextSowingBatches);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <AdminShell>
+      <PageHeader title="Add Procurement Batch" />
+      {loading ? <LoadingState /> : null}
+      {error ? <ErrorState message={error} /> : null}
+      {!loading && !error ? (
+        <ProcuredBatchForm
+          cropOptions={batchOptions.map((item) => item.cropName)}
+          farmers={farmers}
+          farms={farms}
+          initial={parentBatchId ? ({ parentBatchId } as Batch) : null}
+          lockedFarmerId={lockedFarmerId}
+          lockedFarmId={lockedFarmId}
+          sowingBatches={sowingBatches}
+          varietyOptions={batchOptions
+            .map((item) => item.variety)
+            .filter((value): value is string => Boolean(value))}
+          onSubmit={async (payload) => {
+            const { status: _status, ...procuredPayload } = payload;
+            const saved = await batchApi.createProcured(procuredPayload);
+            router.push(`/admin/batches/${saved.id}`);
+          }}
+        />
+      ) : null}
+    </AdminShell>
+  );
+}
+
+// BatchFormView handles procured batch edit with optional farmer/farm query prefill.
 export function BatchFormView({ batchId }: { batchId?: string }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -1743,6 +1881,7 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [batch, setBatch] = useState<Batch | null>(null);
   const [batchOptions, setBatchOptions] = useState<Batch[]>([]);
+  const [sowingBatches, setSowingBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -1751,12 +1890,14 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
       farmerApi.list(),
       listAllFarms(),
       batchApi.list(),
+      batchApi.list({ batchType: "SOWING" }),
       batchId ? batchApi.get(batchId) : Promise.resolve(null),
     ])
-      .then(([nextFarmers, nextFarms, nextBatchOptions, nextBatch]) => {
+      .then(([nextFarmers, nextFarms, nextBatchOptions, nextSowingBatches, nextBatch]) => {
         setFarmers(nextFarmers);
         setFarms(nextFarms);
         setBatchOptions(nextBatchOptions);
+        setSowingBatches(nextSowingBatches);
         setBatch(nextBatch);
       })
       .catch((err) => setError(err.message))
@@ -1765,25 +1906,40 @@ export function BatchFormView({ batchId }: { batchId?: string }) {
 
   return (
     <AdminShell>
-      <PageHeader title={batchId ? "Edit Batch" : "Add Batch"} />
+      <PageHeader title={batchId ? "Edit Procurement Batch" : "Add Procurement Batch"} />
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
-      {!loading && !error ? (
-        <BatchForm
+      {!loading && !error && batch?.batchType === "SOWING" ? (
+        <Card>
+          <p className="text-sm text-stone-600">
+            Sowing batches are registered once. Add a procurement batch to record each harvest.
+          </p>
+          <ButtonLink href={`/admin/batches/new/procured?parentBatchId=${batch.id}&farmerId=${batch.farmerId}&farmId=${batch.farmId}`}>
+            Add procurement for this sowing
+          </ButtonLink>
+        </Card>
+      ) : null}
+      {!loading && !error && (!batchId || batch?.batchType === "PROCURED") ? (
+        <ProcuredBatchForm
           cropOptions={batchOptions.map((item) => item.cropName)}
           farmers={farmers}
           farms={farms}
           initial={batch}
           lockedFarmerId={lockedFarmerId}
           lockedFarmId={lockedFarmId}
+          sowingBatches={sowingBatches}
           varietyOptions={batchOptions
             .map((item) => item.variety)
             .filter((value): value is string => Boolean(value))}
-          onSubmit={async (payload: BatchPayload) => {
-            const saved = batchId
-              ? await batchApi.update(batchId, payload)
-              : await batchApi.create(payload);
-            router.push(`/admin/batches/${saved.id}`);
+          onSubmit={async (payload) => {
+            if (!batchId) {
+              const { status: _status, ...procuredPayload } = payload;
+              const saved = await batchApi.createProcured(procuredPayload);
+              router.push(`/admin/batches/${saved.id}`);
+              return;
+            }
+            await batchApi.update(batchId, payload);
+            router.push(`/admin/batches/${batchId}`);
           }}
         />
       ) : null}
@@ -1811,7 +1967,7 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
         batchApi.get(batchId),
         traceEventApi.list(batchId),
         batchUsageApi.list(batchId),
-        qrApi.get(batchId),
+        qrApi.get(batchId).catch(() => null),
         priceBreakdownApi.get(batchId),
       ]);
       const [nextFarmer, nextFarm] = await Promise.all([
@@ -1843,48 +1999,86 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
       {batch ? (
         <>
           <PageHeader
-            actions={<ButtonLink href={`/admin/batches/${batch.id}/edit`}>Edit Batch</ButtonLink>}
+            actions={
+              <>
+                {batch.batchType === "SOWING" ? (
+                  <ButtonLink
+                    href={`/admin/batches/new/procured?parentBatchId=${batch.id}&farmerId=${batch.farmerId}&farmId=${batch.farmId}`}
+                  >
+                    Add Procurement
+                  </ButtonLink>
+                ) : (
+                  <ButtonLink href={`/admin/batches/${batch.id}/edit`}>Edit Batch</ButtonLink>
+                )}
+              </>
+            }
             title={batch.batchCode}
           />
           <Card>
             <InfoGrid
-              items={[
-                { label: "Crop", value: batch.cropName },
-                { label: "Farmer", value: farmer?.name },
-                { label: "Farm", value: farm?.farmName },
-                { label: "Variety", value: batch.variety },
-                { label: "Received", value: `${batch.quantityReceived} ${batch.unit}` },
-                { label: "Sold", value: `${batch.quantitySold} ${batch.unit}` },
-                { label: "Used in product", value: `${batch.quantityUsedInProduct} ${batch.unit}` },
-                { label: "Wasted", value: `${batch.quantityWasted} ${batch.unit}` },
-                { label: "Available", value: `${batch.quantityAvailable} ${batch.unit}` },
-                { label: "Harvest Date", value: batch.harvestDate },
-                { label: "Received Date", value: batch.receivedDate },
-                { label: "Farmer Price / Unit", value: batch.farmerPricePerUnit },
-                { label: "Total Farmer Amount", value: batch.totalFarmerAmount },
-                { label: "Payment Status", value: batch.paymentStatus },
-                { label: "Consumer Price / Unit", value: batch.consumerPricePerUnit },
-                { label: "Operational Cost / Unit", value: batch.operationalCostPerUnit },
-                {
-                  label: "Margin / Unit",
-                  value:
-                    batch.consumerPricePerUnit -
-                    batch.farmerPricePerUnit -
-                    batch.operationalCostPerUnit,
-                },
-                { label: "Status", value: batch.status },
-              ]}
+              items={
+                batch.batchType === "SOWING"
+                  ? [
+                      { label: "Type", value: "Sowing batch" },
+                      { label: "Crop", value: batch.cropName },
+                      { label: "Farmer", value: farmer?.name },
+                      { label: "Farm", value: farm?.farmName },
+                      { label: "Variety", value: batch.variety },
+                      { label: "Acres sown", value: batch.acresSown },
+                      { label: "Sowing date", value: batch.sowingDate },
+                      { label: "Status", value: batch.status },
+                    ]
+                  : [
+                      { label: "Type", value: "Procurement batch" },
+                      { label: "Crop", value: batch.cropName },
+                      { label: "Farmer", value: farmer?.name },
+                      { label: "Farm", value: farm?.farmName },
+                      { label: "Variety", value: batch.variety },
+                      { label: "Received", value: `${batch.quantityReceived ?? 0} ${batch.unit}` },
+                      { label: "Sold", value: `${batch.quantitySold} ${batch.unit}` },
+                      {
+                        label: "Used in product",
+                        value: `${batch.quantityUsedInProduct} ${batch.unit}`,
+                      },
+                      { label: "Wasted", value: `${batch.quantityWasted} ${batch.unit}` },
+                      { label: "Available", value: `${batch.quantityAvailable} ${batch.unit}` },
+                      { label: "Harvest Date", value: batch.harvestDate },
+                      { label: "Received Date", value: batch.receivedDate },
+                      { label: "Farmer Price / Unit", value: batch.farmerPricePerUnit },
+                      { label: "Total Farmer Amount", value: batch.totalFarmerAmount },
+                      { label: "Payment Status", value: batch.paymentStatus },
+                      { label: "Consumer Price / Unit", value: batch.consumerPricePerUnit },
+                      { label: "Operational Cost / Unit", value: batch.operationalCostPerUnit },
+                      {
+                        label: "Margin / Unit",
+                        value:
+                          (batch.consumerPricePerUnit ?? 0) -
+                          (batch.farmerPricePerUnit ?? 0) -
+                          (batch.operationalCostPerUnit ?? 0),
+                      },
+                      { label: "Status", value: batch.status },
+                    ]
+              }
             />
           </Card>
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <PriceBreakdownPanel
-              batch={batch}
-              initial={priceBreakdown}
-              onSaved={setPriceBreakdown}
-            />
+            {batch.batchType === "PROCURED" ? (
+              <>
+                <PriceBreakdownPanel
+                  batch={batch}
+                  initial={priceBreakdown}
+                  onSaved={setPriceBreakdown}
+                />
+                <BatchUsagePanel batch={batch} onSaved={load} usage={usage} />
+              </>
+            ) : null}
             <QrPanel batchId={batch.id} qr={qr} onSaved={load} />
-            <TraceEventPanel batchId={batch.id} events={events} onSaved={load} />
-            <BatchUsagePanel batch={batch} onSaved={load} usage={usage} />
+            <TraceEventPanel
+              batchId={batch.id}
+              defaultEventType={batch.batchType === "SOWING" ? "SOWN" : "RECEIVED"}
+              events={events}
+              onSaved={load}
+            />
           </div>
         </>
       ) : null}
@@ -1894,10 +2088,12 @@ export function BatchDetailView({ batchId }: { batchId: string }) {
 
 function TraceEventPanel({
   batchId,
+  defaultEventType = "RECEIVED",
   events,
   onSaved,
 }: {
   batchId: string;
+  defaultEventType?: string;
   events: TraceEvent[];
   onSaved: () => void;
 }) {
@@ -1905,7 +2101,7 @@ function TraceEventPanel({
     actorUserId: null,
     description: "",
     eventTime: nowLocal(),
-    eventType: "HARVESTED",
+    eventType: defaultEventType,
     location: "",
     metadataJson: "",
   });

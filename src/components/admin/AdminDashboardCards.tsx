@@ -223,7 +223,7 @@ function PendingPaymentsList({ batches }: { batches: BatchListItem[] }) {
                 <td className="px-2 py-3">{batch.farmerName ?? "Not available"}</td>
                 <td className="px-2 py-3">{batch.cropName}</td>
                 <td className="px-2 py-3">
-                  {quantity.format(batch.quantityReceived)} {batch.unit}
+                  {quantity.format(batch.quantityReceived ?? 0)} {batch.unit}
                 </td>
                 <td className="px-2 py-3">{money.format(batch.totalFarmerAmount || 0)}</td>
                 <td className="px-2 py-3">
@@ -262,7 +262,7 @@ function PendingPaymentsList({ batches }: { batches: BatchListItem[] }) {
               <div className="flex justify-between gap-3">
                 <dt className="text-[var(--ftf-muted)]">Qty</dt>
                 <dd className="font-bold">
-                  {quantity.format(batch.quantityReceived)} {batch.unit}
+                  {quantity.format(batch.quantityReceived ?? 0)} {batch.unit}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
@@ -518,7 +518,7 @@ function BatchInventoryList({
                 <td className="px-2 py-3">{batch.farmName ?? "Not available"}</td>
                 <td className="px-2 py-3">{batch.farmerName ?? "Not available"}</td>
                 <td className="px-2 py-3">
-                  {quantity.format(batch.quantityReceived)} {batch.unit}
+                  {quantity.format(batch.quantityReceived ?? 0)} {batch.unit}
                 </td>
                 <td className="px-2 py-3">
                   {quantity.format(batch.quantitySold)} {batch.unit}
@@ -575,7 +575,7 @@ function BatchInventoryList({
               <div className="flex justify-between gap-3">
                 <dt className="text-[var(--ftf-muted)]">Received / Sold / Wasted</dt>
                 <dd className="text-right font-bold">
-                  {quantity.format(batch.quantityReceived)} / {quantity.format(batch.quantitySold)}{" "}
+                  {quantity.format(batch.quantityReceived ?? 0)} / {quantity.format(batch.quantitySold)}{" "}
                   / {quantity.format(batch.quantityWasted)}
                 </dd>
               </div>

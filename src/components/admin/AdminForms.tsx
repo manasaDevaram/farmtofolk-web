@@ -3,7 +3,16 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from "react";
-import type { Batch, BatchPayload, Farm, Farmer, FarmerPayload, FarmPayload } from "@/types/admin";
+import type {
+  Batch,
+  BatchPayload,
+  Farm,
+  Farmer,
+  FarmerPayload,
+  FarmPayload,
+  ProcuredBatchPayload,
+  SowingBatchPayload,
+} from "@/types/admin";
 import { Button, Card, CreatableCombobox, Field, inputClass } from "./AdminPrimitives";
 
 type SubmitState = { error?: string; success?: string };
@@ -101,12 +110,405 @@ type FarmFormState = Omit<
   sizeAcres: string;
 };
 
-type BatchFormState = Omit<BatchPayload, "quantityReceived" | "farmerPricePerUnit"> & {
+type ProcuredBatchFormState = Omit<ProcuredBatchPayload, "quantityReceived" | "farmerPricePerUnit"> & {
   quantityReceived: string;
   farmerPricePerUnit: string;
 };
 
-// FarmerForm validates the required profile fields before calling the backend.
+type SowingBatchFormState = Omit<SowingBatchPayload, "acresSown"> & {
+  acresSown: string;
+};
+
+function FarmerFarmFields({
+  farmers,
+  farms,
+  farmerId,
+  farmId,
+  lockedFarmerId,
+  lockedFarmId,
+  onChange,
+}: {
+  farmers: Farmer[];
+  farms: Farm[];
+  farmerId: string;
+  farmId: string;
+  lockedFarmerId?: string | null;
+  lockedFarmId?: string | null;
+  onChange: (next: { farmerId: string; farmId: string }) => void;
+}) {
+  const selectableFarms = farms.filter(
+    (farm) => farm.active !== false && (!farmerId || farm.farmerId === farmerId),
+  );
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Farmer" required>
+        <select
+          className={inputClass}
+          disabled={Boolean(lockedFarmerId)}
+          value={farmerId}
+          onChange={(event) => onChange({ farmerId: event.target.value, farmId: "" })}
+        >
+          <option value="">Select farmer</option>
+          {farmers.map((farmer) => (
+            <option key={farmer.id} value={farmer.id}>
+              {farmer.name} - {farmer.village}, {farmer.district}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Farm" required>
+        <select
+          className={inputClass}
+          disabled={Boolean(lockedFarmId)}
+          value={farmId}
+          onChange={(event) => onChange({ farmerId, farmId: event.target.value })}
+        >
+          <option value="">Select farm</option>
+          {selectableFarms.map((farm) => (
+            <option key={farm.id} value={farm.id}>
+              {farm.farmName}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </div>
+  );
+}
+
+export function SowingBatchForm({
+  cropOptions,
+  farms,
+  farmers,
+  lockedFarmId,
+  lockedFarmerId,
+  onSubmit,
+  varietyOptions,
+}: {
+  cropOptions?: string[];
+  farms: Farm[];
+  farmers: Farmer[];
+  lockedFarmId?: string | null;
+  lockedFarmerId?: string | null;
+  onSubmit: (payload: SowingBatchPayload) => Promise<void>;
+  varietyOptions?: string[];
+}) {
+  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<SubmitState>({});
+  const [form, setForm] = useState<SowingBatchFormState>({
+    acresSown: "",
+    cropName: "",
+    farmId: lockedFarmId ?? "",
+    farmerId: lockedFarmerId ?? "",
+    sowingDate: today(),
+    variety: "",
+  });
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setState({});
+    if (!form.farmerId || !form.farmId || !form.cropName || !form.sowingDate) {
+      setState({ error: "Please fill all required sowing fields." });
+      return;
+    }
+    const acresSown = Number(form.acresSown);
+    if (!Number.isFinite(acresSown) || acresSown <= 0) {
+      setState({ error: "Acres sown must be positive." });
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSubmit({
+        acresSown,
+        cropName: form.cropName,
+        farmId: form.farmId,
+        farmerId: form.farmerId,
+        sowingDate: form.sowingDate,
+        variety: form.variety || null,
+      });
+      setState({ success: "Sowing batch saved. QR code will be ready shortly." });
+    } catch (error) {
+      setState({ error: error instanceof Error ? error.message : "Save failed." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={submit}>
+      <Card>
+        <h2 className="text-xl font-black">Sowing details</h2>
+        <p className="mt-2 text-sm text-stone-600">
+          Register what was planted on the farm. A QR code is created for this crop cycle.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <CreatableCombobox
+            label="Crop Name"
+            options={cropOptions ?? []}
+            placeholder="Choose or add a crop"
+            required
+            value={form.cropName}
+            onChange={(cropName) => setForm({ ...form, cropName })}
+          />
+          <CreatableCombobox
+            label="Variety"
+            options={varietyOptions ?? []}
+            placeholder="Choose or add a variety"
+            value={form.variety ?? ""}
+            onChange={(variety) => setForm({ ...form, variety })}
+          />
+          <TextField
+            label="Acres sown"
+            required
+            type="number"
+            placeholder="Acres sown"
+            value={form.acresSown}
+            onChange={(acresSown) => setForm({ ...form, acresSown })}
+          />
+          <TextField
+            label="Sowing date"
+            required
+            type="date"
+            value={form.sowingDate}
+            onChange={(sowingDate) => setForm({ ...form, sowingDate })}
+          />
+        </div>
+      </Card>
+      <Card>
+        <h2 className="text-xl font-black">Farmer & Farm</h2>
+        <div className="mt-4">
+          <FarmerFarmFields
+            farmId={form.farmId}
+            farmerId={form.farmerId}
+            farms={farms}
+            farmers={farmers}
+            lockedFarmId={lockedFarmId}
+            lockedFarmerId={lockedFarmerId}
+            onChange={({ farmerId, farmId }) => setForm({ ...form, farmerId, farmId })}
+          />
+        </div>
+      </Card>
+      <SubmitBar saving={saving} state={state} />
+    </form>
+  );
+}
+
+export function ProcuredBatchForm({
+  cropOptions,
+  farms,
+  farmers,
+  initial,
+  lockedFarmId,
+  lockedFarmerId,
+  onSubmit,
+  sowingBatches,
+  varietyOptions,
+}: {
+  cropOptions?: string[];
+  farms: Farm[];
+  farmers: Farmer[];
+  initial?: Batch | null;
+  lockedFarmId?: string | null;
+  lockedFarmerId?: string | null;
+  onSubmit: (payload: BatchPayload) => Promise<void>;
+  sowingBatches: Batch[];
+  varietyOptions?: string[];
+}) {
+  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<SubmitState>({});
+  const [form, setForm] = useState<ProcuredBatchFormState>({
+    cropName: initial?.cropName ?? "",
+    farmId: initial?.farmId ?? lockedFarmId ?? "",
+    farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
+    harvestDate: initial?.harvestDate ?? today(),
+    parentBatchId: initial?.parentBatchId ?? "",
+    paymentStatus: initial?.paymentStatus ?? "UNPAID",
+    quantityReceived: initial?.quantityReceived == null ? "" : String(initial.quantityReceived),
+    farmerPricePerUnit:
+      initial?.farmerPricePerUnit == null ? "" : String(initial.farmerPricePerUnit),
+    receivedDate: initial?.receivedDate ?? today(),
+    unit: initial?.unit ?? "kg",
+    variety: initial?.variety ?? "",
+  });
+
+  const selectableSowingBatches = sowingBatches.filter(
+    (batch) => batch.batchType === "SOWING" && (!form.farmId || batch.farmId === form.farmId),
+  );
+
+  useEffect(() => {
+    if (!form.parentBatchId) return;
+    const selected = selectableSowingBatches.find((batch) => batch.id === form.parentBatchId);
+    if (!selected) return;
+    setForm((current) => ({
+      ...current,
+      cropName: selected.cropName,
+      variety: selected.variety ?? "",
+      farmId: selected.farmId,
+      farmerId: selected.farmerId,
+    }));
+  }, [form.parentBatchId, selectableSowingBatches]);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setState({});
+    if (
+      !form.farmerId ||
+      !form.farmId ||
+      !form.parentBatchId ||
+      !form.cropName ||
+      !form.unit ||
+      !form.harvestDate ||
+      !form.receivedDate
+    ) {
+      setState({ error: "Please fill all required procurement fields." });
+      return;
+    }
+    const quantityReceived = Number(form.quantityReceived);
+    const farmerPricePerUnit = Number(form.farmerPricePerUnit);
+    if (!Number.isFinite(quantityReceived) || quantityReceived <= 0) {
+      setState({ error: "Quantity received must be positive." });
+      return;
+    }
+    if (!form.farmerPricePerUnit.trim() || !isNonNegative(farmerPricePerUnit)) {
+      setState({ error: "Farmer price per unit cannot be negative." });
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSubmit({
+        cropName: form.cropName,
+        farmId: form.farmId,
+        farmerId: form.farmerId,
+        harvestDate: form.harvestDate,
+        parentBatchId: form.parentBatchId,
+        paymentStatus: form.paymentStatus,
+        quantityReceived,
+        farmerPricePerUnit,
+        receivedDate: form.receivedDate,
+        status: initial?.status ?? "RECEIVED",
+        unit: form.unit,
+        variety: form.variety || null,
+      });
+      setState({ success: "Procurement batch saved successfully." });
+    } catch (error) {
+      setState({ error: error instanceof Error ? error.message : "Save failed." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={submit}>
+      <Card>
+        <h2 className="text-xl font-black">Procurement details</h2>
+        <p className="mt-2 text-sm text-stone-600">
+          Record produce received today. It links to the sowing batch and updates the same QR code.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Sowing batch" required>
+            <select
+              className={inputClass}
+              value={form.parentBatchId}
+              onChange={(event) => setForm({ ...form, parentBatchId: event.target.value })}
+            >
+              <option value="">Select sowing batch</option>
+              {selectableSowingBatches.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.cropName}
+                  {batch.variety ? ` (${batch.variety})` : ""} · {batch.acresSown ?? "?"} acres ·
+                  sown {batch.sowingDate}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <CreatableCombobox
+            label="Crop Name"
+            options={cropOptions ?? []}
+            placeholder="Choose or add a crop"
+            required
+            value={form.cropName}
+            onChange={(cropName) => setForm({ ...form, cropName })}
+          />
+          <CreatableCombobox
+            label="Variety"
+            options={varietyOptions ?? []}
+            placeholder="Choose or add a variety"
+            value={form.variety ?? ""}
+            onChange={(variety) => setForm({ ...form, variety })}
+          />
+          <TextField
+            label="Quantity received"
+            required
+            type="number"
+            placeholder="Quantity received"
+            value={form.quantityReceived}
+            onChange={(quantityReceived) => setForm({ ...form, quantityReceived })}
+          />
+          <TextField
+            label="Unit"
+            required
+            value={form.unit}
+            onChange={(unit) => setForm({ ...form, unit })}
+          />
+        </div>
+      </Card>
+      <Card>
+        <h2 className="text-xl font-black">Farmer & Farm</h2>
+        <div className="mt-4">
+          <FarmerFarmFields
+            farmId={form.farmId}
+            farmerId={form.farmerId}
+            farms={farms}
+            farmers={farmers}
+            lockedFarmId={lockedFarmId}
+            lockedFarmerId={lockedFarmerId}
+            onChange={({ farmerId, farmId }) =>
+              setForm({ ...form, farmerId, farmId, parentBatchId: "" })
+            }
+          />
+        </div>
+      </Card>
+      <Card>
+        <h2 className="text-xl font-black">Receiving & Pricing</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="Harvest date"
+            required
+            type="date"
+            value={form.harvestDate}
+            onChange={(harvestDate) => setForm({ ...form, harvestDate })}
+          />
+          <TextField
+            label="Received date"
+            required
+            type="date"
+            value={form.receivedDate}
+            onChange={(receivedDate) => setForm({ ...form, receivedDate })}
+          />
+          <TextField
+            label="Farmer price per unit"
+            required
+            type="number"
+            placeholder="Farmer price per unit"
+            value={form.farmerPricePerUnit}
+            onChange={(farmerPricePerUnit) => setForm({ ...form, farmerPricePerUnit })}
+          />
+          <Field label="Payment status" required>
+            <select
+              className={inputClass}
+              value={form.paymentStatus}
+              onChange={(event) => setForm({ ...form, paymentStatus: event.target.value })}
+            >
+              <option value="UNPAID">UNPAID</option>
+              <option value="PAID">PAID</option>
+            </select>
+          </Field>
+        </div>
+      </Card>
+      <SubmitBar saving={saving} state={state} />
+    </form>
+  );
+}
 export function FarmerForm({
   initial,
   onSubmit,
@@ -566,222 +968,6 @@ export function FarmForm({
         <p className="mt-3 text-xs text-[var(--ftf-muted)]">
           Address data © OpenStreetMap contributors. Elevation data: Open-Meteo / Copernicus.
         </p>
-      </Card>
-      <SubmitBar saving={saving} state={state} />
-    </form>
-  );
-}
-
-// BatchForm guides the operator through farmer -> farm -> batch creation.
-export function BatchForm({
-  cropOptions,
-  farms,
-  farmers,
-  initial,
-  lockedFarmId,
-  lockedFarmerId,
-  onSubmit,
-  varietyOptions,
-}: {
-  cropOptions?: string[];
-  farms: Farm[];
-  farmers: Farmer[];
-  initial?: Batch | null;
-  lockedFarmId?: string | null;
-  lockedFarmerId?: string | null;
-  onSubmit: (payload: BatchPayload) => Promise<void>;
-  varietyOptions?: string[];
-}) {
-  const [saving, setSaving] = useState(false);
-  const [state, setState] = useState<SubmitState>({});
-  const [form, setForm] = useState<BatchFormState>({
-    cropName: initial?.cropName ?? "",
-    farmId: initial?.farmId ?? lockedFarmId ?? "",
-    farmerId: initial?.farmerId ?? lockedFarmerId ?? "",
-    harvestDate: initial?.harvestDate ?? today(),
-    receivedDate: initial?.receivedDate ?? today(),
-    quantityReceived: initial?.quantityReceived == null ? "" : String(initial.quantityReceived),
-    farmerPricePerUnit:
-      initial?.farmerPricePerUnit == null ? "" : String(initial.farmerPricePerUnit),
-    paymentStatus: initial?.paymentStatus ?? "UNPAID",
-    status: initial?.status ?? "HARVESTED",
-    unit: initial?.unit ?? "kg",
-    variety: initial?.variety ?? "",
-  });
-
-  const selectableFarms = useMemo(
-    () =>
-      farms.filter(
-        (farm) => farm.active !== false && (!form.farmerId || farm.farmerId === form.farmerId),
-      ),
-    [farms, form.farmerId],
-  );
-
-  useEffect(() => {
-    if (form.farmId && !selectableFarms.some((farm) => farm.id === form.farmId)) {
-      setForm((current) => ({ ...current, farmId: "" }));
-    }
-  }, [form.farmId, selectableFarms]);
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setState({});
-    if (
-      !form.farmerId ||
-      !form.farmId ||
-      !form.cropName ||
-      !form.unit ||
-      !form.harvestDate ||
-      !form.receivedDate ||
-      !form.status
-    ) {
-      setState({ error: "Please fill all required batch fields." });
-      return;
-    }
-    const quantityReceived = Number(form.quantityReceived);
-    const farmerPricePerUnit = Number(form.farmerPricePerUnit);
-    if (!Number.isFinite(quantityReceived) || quantityReceived <= 0) {
-      setState({ error: "Quantity received must be positive." });
-      return;
-    }
-    if (!form.farmerPricePerUnit.trim() || !isNonNegative(farmerPricePerUnit)) {
-      setState({ error: "Farmer price per unit cannot be negative." });
-      return;
-    }
-    setSaving(true);
-    try {
-      await onSubmit({
-        ...form,
-        quantityReceived,
-        farmerPricePerUnit,
-        variety: form.variety || null,
-      });
-      setState({ success: "Batch saved successfully." });
-    } catch (error) {
-      setState({ error: error instanceof Error ? error.message : "Save failed." });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <form className="space-y-5" onSubmit={submit}>
-      <Card>
-        <h2 className="text-xl font-black">Batch Details</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <CreatableCombobox
-            label="Crop Name"
-            options={cropOptions ?? []}
-            placeholder="Choose or add a crop"
-            required
-            value={form.cropName}
-            onChange={(cropName) => setForm({ ...form, cropName })}
-          />
-          <CreatableCombobox
-            label="Variety"
-            options={varietyOptions ?? []}
-            placeholder="Choose or add a variety"
-            value={form.variety ?? ""}
-            onChange={(variety) => setForm({ ...form, variety })}
-          />
-          <TextField
-            label="Quantity Received"
-            required
-            type="number"
-            placeholder="Quantity Received"
-            value={form.quantityReceived}
-            onChange={(quantityReceived) => setForm({ ...form, quantityReceived })}
-          />
-          <TextField
-            label="Unit"
-            required
-            value={form.unit}
-            onChange={(unit) => setForm({ ...form, unit })}
-          />
-          <Field label="Status" required>
-            <select
-              className={inputClass}
-              value={form.status}
-              onChange={(event) => setForm({ ...form, status: event.target.value })}
-            >
-              {["HARVESTED", "PACKED", "READY_FOR_SALE", "SOLD"].map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </Card>
-      <Card>
-        <h2 className="text-xl font-black">Farmer & Farm</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Farmer" required>
-            <select
-              className={inputClass}
-              disabled={Boolean(lockedFarmerId)}
-              value={form.farmerId}
-              onChange={(event) => setForm({ ...form, farmerId: event.target.value, farmId: "" })}
-            >
-              <option value="">Select farmer</option>
-              {farmers.map((farmer) => (
-                <option key={farmer.id} value={farmer.id}>
-                  {farmer.name} - {farmer.village}, {farmer.district}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Farm" required>
-            <select
-              className={inputClass}
-              disabled={Boolean(lockedFarmId)}
-              value={form.farmId}
-              onChange={(event) => setForm({ ...form, farmId: event.target.value })}
-            >
-              <option value="">Select farm</option>
-              {selectableFarms.map((farm) => (
-                <option key={farm.id} value={farm.id}>
-                  {farm.farmName}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </Card>
-      <Card>
-        <h2 className="text-xl font-black">Receiving & Pricing</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <TextField
-            label="Harvest Date"
-            required
-            type="date"
-            value={form.harvestDate}
-            onChange={(harvestDate) => setForm({ ...form, harvestDate })}
-          />
-          <TextField
-            label="Received Date"
-            required
-            type="date"
-            value={form.receivedDate}
-            onChange={(receivedDate) => setForm({ ...form, receivedDate })}
-          />
-          <TextField
-            label="Farmer Price Per Unit"
-            required
-            type="number"
-            placeholder="Farmer Price Per Unit"
-            value={form.farmerPricePerUnit}
-            onChange={(farmerPricePerUnit) => setForm({ ...form, farmerPricePerUnit })}
-          />
-          <Field label="Payment Status" required>
-            <select
-              className={inputClass}
-              value={form.paymentStatus}
-              onChange={(event) => setForm({ ...form, paymentStatus: event.target.value })}
-            >
-              <option value="UNPAID">UNPAID</option>
-              <option value="PAID">PAID</option>
-            </select>
-          </Field>
-        </div>
       </Card>
       <SubmitBar saving={saving} state={state} />
     </form>

@@ -130,22 +130,28 @@ export type FarmPayload = Omit<Farm, "id" | "active" | "createdAt" | "updatedAt"
 export type FarmerResponse = Farmer;
 export type FarmResponse = Farm;
 
+export type BatchType = "SOWING" | "PROCURED";
+
 export type Batch = {
   id: string;
   batchCode: string;
+  batchType: BatchType;
+  parentBatchId: Nullable<string>;
   farmId: string;
   farmerId: string;
   cropName: string;
   variety: Nullable<string>;
-  quantityReceived: number;
+  acresSown: Nullable<number>;
+  sowingDate: Nullable<string>;
+  quantityReceived: Nullable<number>;
   quantitySold: number;
   quantityWasted: number;
   quantityUsedInProduct: number;
   quantityAvailable: number;
   unit: string;
-  harvestDate: string;
-  receivedDate: string;
-  farmerPricePerUnit: number;
+  harvestDate: Nullable<string>;
+  receivedDate: Nullable<string>;
+  farmerPricePerUnit: Nullable<number>;
   totalFarmerAmount: number;
   paymentStatus: string;
   consumerPricePerUnit: number;
@@ -155,9 +161,19 @@ export type Batch = {
   updatedAt: string;
 };
 
-export type BatchPayload = {
+export type SowingBatchPayload = {
   farmerId: string;
   farmId: string;
+  cropName: string;
+  variety: Nullable<string>;
+  acresSown: number;
+  sowingDate: string;
+};
+
+export type ProcuredBatchPayload = {
+  farmerId: string;
+  farmId: string;
+  parentBatchId: string;
   cropName: string;
   variety: Nullable<string>;
   quantityReceived: number;
@@ -166,8 +182,9 @@ export type BatchPayload = {
   receivedDate: string;
   farmerPricePerUnit: number;
   paymentStatus: string;
-  status: string;
 };
+
+export type BatchPayload = ProcuredBatchPayload & { status?: string };
 
 export type BatchUsageType =
   "SOLD_ONLINE" | "SOLD_OFFLINE" | "CAFE" | "EXPERIENCE_CENTRE" | "USED_IN_PRODUCT" | "WASTED";
