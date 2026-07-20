@@ -61,6 +61,36 @@ export function fileFingerprint(file: File) {
   return `${file.name}:${file.size}:${file.lastModified}`;
 }
 
+const ADD_FARMER_DRAFT_KEY = "ftf.add-farmer-draft";
+
+export type AddFarmerDraft = {
+  farmerId: string;
+  phone: string;
+  savedPayloadKey: string;
+  uploadedPhotoFingerprint: string | null;
+  uploadedVideoFingerprint: string | null;
+};
+
+export function loadAddFarmerDraft(): AddFarmerDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(ADD_FARMER_DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as AddFarmerDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function persistAddFarmerDraft(draft: AddFarmerDraft) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(ADD_FARMER_DRAFT_KEY, JSON.stringify(draft));
+}
+
+export function clearAddFarmerDraft() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(ADD_FARMER_DRAFT_KEY);
+}
+
 type FarmFormState = Omit<
   FarmPayload,
   "latitude" | "longitude" | "altitudeMeters" | "sizeAcres"

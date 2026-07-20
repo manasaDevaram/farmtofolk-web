@@ -13,6 +13,9 @@ import {
   evidenceApi,
   farmApi,
   farmerApi,
+  findFarmerByPhone,
+  formatMediaUploadError,
+  isDuplicateFarmerError,
   listAllBatches,
   listAllFarms,
   mediaApi,
@@ -45,7 +48,7 @@ import type {
 import { cleanMediaUrl } from "@/lib/media-url";
 import { BRAND_NAME } from "@/lib/constants";
 import { API_BASE_URL } from "@/lib/api-config";
-import { BatchForm, FarmerForm, FarmForm, farmerPayloadKey, fileFingerprint, mergeFarmingTypeOptions, rememberFarmingType } from "./AdminForms";
+import { BatchForm, FarmerForm, FarmForm, clearAddFarmerDraft, farmerPayloadKey, fileFingerprint, loadAddFarmerDraft, mergeFarmingTypeOptions, persistAddFarmerDraft, rememberFarmingType } from "./AdminForms";
 import { DashboardSummaryView } from "./AdminDashboardCards";
 import {
   AdminShell,
@@ -238,10 +241,18 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [loading, setLoading] = useState(Boolean(farmerId));
   const [error, setError] = useState("");
-  const [draftFarmerId, setDraftFarmerId] = useState<string | null>(null);
-  const [savedPayloadKey, setSavedPayloadKey] = useState<string | null>(null);
-  const [uploadedPhotoFingerprint, setUploadedPhotoFingerprint] = useState<string | null>(null);
-  const [uploadedVideoFingerprint, setUploadedVideoFingerprint] = useState<string | null>(null);
+  const [draftFarmerId, setDraftFarmerId] = useState<string | null>(
+    () => loadAddFarmerDraft()?.farmerId ?? null,
+  );
+  const [savedPayloadKey, setSavedPayloadKey] = useState<string | null>(
+    () => loadAddFarmerDraft()?.savedPayloadKey ?? null,
+  );
+  const [uploadedPhotoFingerprint, setUploadedPhotoFingerprint] = useState<string | null>(
+    () => loadAddFarmerDraft()?.uploadedPhotoFingerprint ?? null,
+  );
+  const [uploadedVideoFingerprint, setUploadedVideoFingerprint] = useState<string | null>(
+    () => loadAddFarmerDraft()?.uploadedVideoFingerprint ?? null,
+  );
 
   useEffect(() => {
     if (!farmerId) return;
@@ -252,69 +263,181 @@ export function FarmerFormView({ farmerId }: { farmerId?: string }) {
       .finally(() => setLoading(false));
   }, [farmerId]);
 
+  async function saveFarmerDetails(
+    payload: FarmerPayload,
+    active: boolean,
+    existingDraftId: string | null,
+    existingPayloadKey: string | null,
+  ) {
+    const payloadKey = farmerPayloadKey(payload, active);
+    const detailsChanged = !existingDraftId || existingPayloadKey !== payloadKey;
+    let saved: Farmer;
+    let nextDraftId = existingDraftId;
+
+    if (detailsChanged) {
+      if (!existingDraftId) {
+        try {
+          saved = await farmerApi.create(payload);
+          nextDraftId = saved.id;
+        } catch (error) {
+          if (!isDuplicateFarmerError(error)) throw error;
+          const existing = await findFarmerByPhone(payload.phone);
+          if (!existing) throw error;
+          saved = existing;
+          nextDraftId = existing.id;
+          if (existingPayloadKey !== payloadKey) {
+            saved = await farmerApi.update(existing.id, payload);
+          }
+        }
+      } else {
+        saved = await farmerApi.update(existingDraftId, payload);
+        nextDraftId = existingDraftId;
+      }
+
+      if (saved.active !== active) {
+        saved = await farmerApi.updateStatus(saved.id, active);
+      }
+    } else {
+      saved = await farmerApi.get(existingDraftId!);
+      if (saved.active !== active) {
+        saved = await farmerApi.updateStatus(saved.id, active);
+      }
+    }
+
+    return { saved, nextDraftId, payloadKey };
+  }
+
+  async function uploadPendingMedia(
+    farmerId: string,
+    media: { profilePhoto?: File | null; introVideo?: File | null } | undefined,
+    photoFingerprint: string | null,
+    videoFingerprint: string | null,
+    currentPhotoFingerprint: string | null,
+    currentVideoFingerprint: string | null,
+  ) {
+    let nextPhotoFingerprint = currentPhotoFingerprint;
+    let nextVideoFingerprint = currentVideoFingerprint;
+
+    if (media?.profilePhoto && photoFingerprint !== currentPhotoFingerprint) {
+      try {
+        await farmerApi.uploadProfilePhoto(farmerId, media.profilePhoto);
+        nextPhotoFingerprint = photoFingerprint;
+      } catch (error) {
+        const uploadError = new Error(formatMediaUploadError("Profile photo", error));
+        (uploadError as Error & { uploadProgress?: { photo: string | null; video: string | null } }).uploadProgress = {
+          photo: nextPhotoFingerprint,
+          video: nextVideoFingerprint,
+        };
+        throw uploadError;
+      }
+    }
+
+    if (media?.introVideo && videoFingerprint !== currentVideoFingerprint) {
+      try {
+        await farmerApi.uploadIntroVideo(farmerId, media.introVideo);
+        nextVideoFingerprint = videoFingerprint;
+      } catch (error) {
+        const uploadError = new Error(formatMediaUploadError("Intro video", error));
+        (uploadError as Error & { uploadProgress?: { photo: string | null; video: string | null } }).uploadProgress = {
+          photo: nextPhotoFingerprint,
+          video: nextVideoFingerprint,
+        };
+        throw uploadError;
+      }
+    }
+
+    return { nextPhotoFingerprint, nextVideoFingerprint };
+  }
+
   return (
     <AdminShell>
       <PageHeader title={farmerId ? "Edit Farmer" : "Add Farmer"} />
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {!loading && !error ? (
-        <FarmerForm
-          initial={farmer}
-          onSubmit={async (payload, active, media) => {
-            if (!farmerId) {
-              const payloadKey = farmerPayloadKey(payload, active);
-              const photoFingerprint = media?.profilePhoto
-                ? fileFingerprint(media.profilePhoto)
-                : null;
-              const videoFingerprint = media?.introVideo ? fileFingerprint(media.introVideo) : null;
-              const detailsChanged = !draftFarmerId || savedPayloadKey !== payloadKey;
-              let saved: Farmer;
+        <>
+          {!farmerId && draftFarmerId ? (
+            <Card className="mb-4 border-amber-200 bg-amber-50 text-sm font-semibold text-amber-900">
+              Farmer details are already saved. Click Save again to retry any failed photo or video
+              upload.
+            </Card>
+          ) : null}
+          <FarmerForm
+            initial={farmer}
+            onSubmit={async (payload, active, media) => {
+              if (!farmerId) {
+                const photoFingerprint = media?.profilePhoto
+                  ? fileFingerprint(media.profilePhoto)
+                  : null;
+                const videoFingerprint = media?.introVideo
+                  ? fileFingerprint(media.introVideo)
+                  : null;
 
-              if (detailsChanged) {
-                saved = draftFarmerId
-                  ? await farmerApi.update(draftFarmerId, payload)
-                  : await farmerApi.create(payload);
-                setDraftFarmerId(saved.id);
-                if (saved.active !== active) {
-                  saved = await farmerApi.updateStatus(saved.id, active);
-                }
+                const { saved, nextDraftId, payloadKey } = await saveFarmerDetails(
+                  payload,
+                  active,
+                  draftFarmerId,
+                  savedPayloadKey,
+                );
+
+                setDraftFarmerId(nextDraftId);
                 setSavedPayloadKey(payloadKey);
-              } else {
-                saved = await farmerApi.get(draftFarmerId);
-                if (saved.active !== active) {
-                  saved = await farmerApi.updateStatus(saved.id, active);
-                  setSavedPayloadKey(payloadKey);
+
+                const draftBase = {
+                  farmerId: saved.id,
+                  phone: payload.phone,
+                  savedPayloadKey: payloadKey,
+                };
+                persistAddFarmerDraft({
+                  ...draftBase,
+                  uploadedPhotoFingerprint,
+                  uploadedVideoFingerprint,
+                });
+
+                let nextPhotoFingerprint = uploadedPhotoFingerprint;
+                let nextVideoFingerprint = uploadedVideoFingerprint;
+                try {
+                  const uploadResult = await uploadPendingMedia(
+                    saved.id,
+                    media,
+                    photoFingerprint,
+                    videoFingerprint,
+                    uploadedPhotoFingerprint,
+                    uploadedVideoFingerprint,
+                  );
+                  nextPhotoFingerprint = uploadResult.nextPhotoFingerprint;
+                  nextVideoFingerprint = uploadResult.nextVideoFingerprint;
+                } catch (uploadError) {
+                  const progress = (
+                    uploadError as Error & {
+                      uploadProgress?: { photo: string | null; video: string | null };
+                    }
+                  ).uploadProgress;
+                  persistAddFarmerDraft({
+                    ...draftBase,
+                    uploadedPhotoFingerprint:
+                      progress?.photo ?? uploadedPhotoFingerprint,
+                    uploadedVideoFingerprint:
+                      progress?.video ?? uploadedVideoFingerprint,
+                  });
+                  if (progress?.photo) setUploadedPhotoFingerprint(progress.photo);
+                  if (progress?.video) setUploadedVideoFingerprint(progress.video);
+                  throw uploadError;
                 }
+
+                setUploadedPhotoFingerprint(nextPhotoFingerprint);
+                setUploadedVideoFingerprint(nextVideoFingerprint);
+                clearAddFarmerDraft();
+                router.push(`/admin/farmers/${saved.id}`);
+                return;
               }
 
-              const uploads: Promise<void>[] = [];
-              if (media?.profilePhoto && photoFingerprint !== uploadedPhotoFingerprint) {
-                uploads.push(
-                  farmerApi.uploadProfilePhoto(saved.id, media.profilePhoto).then(() => {
-                    setUploadedPhotoFingerprint(photoFingerprint);
-                  }),
-                );
-              }
-              if (media?.introVideo && videoFingerprint !== uploadedVideoFingerprint) {
-                uploads.push(
-                  farmerApi.uploadIntroVideo(saved.id, media.introVideo).then(() => {
-                    setUploadedVideoFingerprint(videoFingerprint);
-                  }),
-                );
-              }
-              if (uploads.length) {
-                await Promise.all(uploads);
-              }
-
+              const saved = await farmerApi.update(farmerId, payload);
+              if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
               router.push(`/admin/farmers/${saved.id}`);
-              return;
-            }
-
-            const saved = await farmerApi.update(farmerId, payload);
-            if (saved.active !== active) await farmerApi.updateStatus(saved.id, active);
-            router.push(`/admin/farmers/${saved.id}`);
-          }}
-        />
+            }}
+          />
+        </>
       ) : null}
     </AdminShell>
   );

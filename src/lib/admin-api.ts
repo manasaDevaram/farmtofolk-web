@@ -119,6 +119,39 @@ function networkErrorMessage(error: unknown): string {
   return "Could not reach the API. Check your internet connection and try again.";
 }
 
+function formatMediaUploadError(label: string, error: unknown): string {
+  const raw = error instanceof Error ? error.message.trim() : "";
+  const normalized = raw.toLowerCase();
+
+  if (
+    !raw ||
+    raw === "Internal server error" ||
+    normalized.includes("internal server error")
+  ) {
+    return `${label} upload failed. The file may be too large or in an unsupported format.`;
+  }
+  if (normalized.includes("413") || normalized.includes("too large")) {
+    return `${label} upload failed. File is too large (max 100 MB).`;
+  }
+  if (normalized.includes("415") || normalized.includes("unsupported")) {
+    return `${label} upload failed. Unsupported file type.`;
+  }
+  if (raw.startsWith(`${label} upload failed`)) {
+    return raw;
+  }
+  return `${label} upload failed: ${raw}`;
+}
+
+function isDuplicateFarmerError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("farmer phone already") ||
+    message.includes("phone already exists") ||
+    message.includes("already has a user account")
+  );
+}
+
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -290,6 +323,13 @@ export const farmerApi = {
     });
   },
 };
+
+export async function findFarmerByPhone(phone: string): Promise<Farmer | null> {
+  const farmers = await farmerApi.list();
+  return farmers.find((farmer) => farmer.phone === phone) ?? null;
+}
+
+export { formatMediaUploadError, isDuplicateFarmerError };
 
 // Farm APIs cover both global farm lookup and farmer-scoped farm lookup.
 export const farmApi = {
