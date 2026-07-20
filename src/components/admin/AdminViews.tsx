@@ -59,6 +59,7 @@ import {
   CreatableCombobox,
   EmptyState,
   ErrorState,
+  Field,
   InfoGrid,
   LoadingState,
   PageHeader,
@@ -553,11 +554,14 @@ function RelatedLists({ batches, farms }: { batches: Batch[]; farms: Farm[] }) {
         <div className="mt-3 space-y-2">
           {farms.map((farm) => (
             <Link
-              className="block rounded-2xl bg-stone-50 p-3 font-bold hover:bg-emerald-50"
+              className="block rounded-2xl bg-stone-50 p-3 hover:bg-emerald-50"
               href={`/admin/farms/${farm.id}`}
               key={farm.id}
             >
-              {farm.farmName}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold">{farm.farmName}</span>
+                <StatusBadge active={farm.active !== false} />
+              </div>
             </Link>
           ))}
           {!farms.length ? <p className="text-stone-500">No farms yet.</p> : null}
@@ -615,6 +619,11 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
     void load();
   }, [load]);
 
+  async function toggle(farm: FarmWithFarmer) {
+    await farmApi.updateStatus(farm.id, farm.active === false);
+    await load();
+  }
+
   return (
     <AdminShell>
       <PageHeader
@@ -647,7 +656,10 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h2 className="text-xl font-black">{farm.farmName}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black">{farm.farmName}</h2>
+                  <StatusBadge active={farm.active !== false} />
+                </div>
                 <p className="font-bold text-stone-600">
                   {farm.farmer?.name || farm.farmerName || "Unknown farmer"}
                 </p>
@@ -666,9 +678,17 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
                 <ButtonLink href={`/admin/farms/${farm.id}/edit`} variant="secondary">
                   Edit
                 </ButtonLink>
-                <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}>
-                  Add Batch
-                </ButtonLink>
+                {farm.active !== false ? (
+                  <ButtonLink href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}>
+                    Add Batch
+                  </ButtonLink>
+                ) : null}
+                <Button
+                  onClick={() => void toggle(farm)}
+                  variant={farm.active !== false ? "danger" : "primary"}
+                >
+                  {farm.active !== false ? "Deactivate" : "Activate"}
+                </Button>
               </div>
             </div>
           </Card>
@@ -715,27 +735,36 @@ export function FarmFormView({ farmId }: { farmId?: string }) {
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {!loading && !error ? (
-        <FarmForm
-          farmers={farmers}
-          farmingTypeOptions={farmingTypeOptions}
-          initial={farm}
-          lockedFarmerId={lockedFarmer}
-          onFarmingTypeUsed={(farmingType) => {
-            rememberFarmingType(farmingType);
-            setFarmingTypeOptions((current) =>
-              current.some((item) => item.toLowerCase() === farmingType.toLowerCase())
-                ? current
-                : [...current, farmingType].sort((a, b) => a.localeCompare(b)),
-            );
-          }}
-          onSubmit={async (payload) => {
-            const saved = farmId
-              ? await farmApi.update(farmId, payload)
-              : await farmApi.create(payload);
-            router.push(`/admin/farms/${saved.id}`);
-          }}
-          onUnlockFarmer={() => setLockedFarmer(null)}
-        />
+        <>
+          <FarmForm
+            farmers={farmers}
+            farmingTypeOptions={farmingTypeOptions}
+            initial={farm}
+            lockedFarmerId={lockedFarmer}
+            onFarmingTypeUsed={(farmingType) => {
+              rememberFarmingType(farmingType);
+              setFarmingTypeOptions((current) =>
+                current.some((item) => item.toLowerCase() === farmingType.toLowerCase())
+                  ? current
+                  : [...current, farmingType].sort((a, b) => a.localeCompare(b)),
+              );
+            }}
+            onSubmit={async (payload) => {
+              if (farmId) {
+                await farmApi.update(farmId, payload);
+                return;
+              }
+              const saved = await farmApi.create(payload);
+              router.push(`/admin/farms/${saved.id}`);
+            }}
+            onUnlockFarmer={() => setLockedFarmer(null)}
+          />
+          {farmId ? (
+            <div className="mt-6">
+              <FarmVerificationSection farmId={farmId} />
+            </div>
+          ) : null}
+        </>
       ) : null}
     </AdminShell>
   );
@@ -762,7 +791,6 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
   const [media, setMedia] = useState<FarmMedia[]>([]);
   const [verification, setVerification] = useState<FarmVerification | null>(null);
   const [verifications, setVerifications] = useState<FarmVerification[]>([]);
-  const [evidence, setEvidence] = useState<VerificationEvidence[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -784,7 +812,6 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
       setMedia(nextMedia);
       setVerification(nextVerification);
       setVerifications(nextVerifications);
-      setEvidence(nextVerification ? await evidenceApi.list(nextVerification.id) : []);
       setBatches(nextBatches);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load farm.");
@@ -797,6 +824,12 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
     void load();
   }, [load]);
 
+  async function toggleStatus() {
+    if (!farm) return;
+    const next = await farmApi.updateStatus(farm.id, farm.active === false);
+    setFarm(next);
+  }
+
   return (
     <AdminShell>
       {loading ? <LoadingState /> : null}
@@ -807,12 +840,20 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
             actions={
               <>
                 <ButtonLink href={`/admin/farms/${farm.id}/edit`}>Edit Farm</ButtonLink>
-                <ButtonLink
-                  href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}
-                  variant="secondary"
+                {farm.active !== false ? (
+                  <ButtonLink
+                    href={`/admin/batches/new?farmerId=${farm.farmerId}&farmId=${farm.id}`}
+                    variant="secondary"
+                  >
+                    Add Batch
+                  </ButtonLink>
+                ) : null}
+                <Button
+                  onClick={() => void toggleStatus()}
+                  variant={farm.active !== false ? "danger" : "primary"}
                 >
-                  Add Batch
-                </ButtonLink>
+                  {farm.active !== false ? "Deactivate Farm" : "Activate Farm"}
+                </Button>
               </>
             }
             title={farm.farmName}
@@ -820,6 +861,7 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
           <Card>
             <InfoGrid
               items={[
+                { label: "Status", value: <StatusBadge active={farm.active !== false} /> },
                 { label: "Location", value: `${farm.village}, ${farm.district}, ${farm.state}` },
                 { label: "Size", value: farm.sizeAcres ? `${farm.sizeAcres} acres` : null },
                 { label: "Farming Type", value: farm.farmingType },
@@ -836,27 +878,20 @@ export function FarmDetailView({ farmId }: { farmId: string }) {
               ]}
             />
           </Card>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4">
             <FarmMediaPanel
               media={media}
               onDelete={setDeleteId}
               onUploaded={load}
               farmId={farm.id}
             />
-            <VerificationPanel
-              evidence={evidence}
-              farmId={farm.id}
-              lastVerified={findLastVerified(verifications)}
-              latest={verification}
-              onEvidenceDelete={(id) => evidenceApi.delete(id).then(load)}
-              onEvidenceUpload={(file, caption, isPublic) =>
-                verification
-                  ? evidenceApi.upload(verification.id, file, caption, isPublic).then(load)
-                  : Promise.resolve()
-              }
-              onSaved={load}
-              verifications={verifications}
-            />
+            <p className="mt-3 text-sm text-stone-500">
+              Field verification is managed from{" "}
+              <Link className="font-bold text-emerald-800 underline" href={`/admin/farms/${farm.id}/edit`}>
+                Edit Farm
+              </Link>
+              .
+            </p>
           </div>
           <Card className="mt-4">
             <h2 className="text-xl font-black">Batches From This Farm</h2>
@@ -1060,19 +1095,19 @@ function EvidenceUploader({
       <DropUpload
         accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,application/pdf"
         file={file}
-        label="Drop evidence photo, video, or PDF here"
+        label="Drop proof photo, video, or PDF here"
         onFile={setFile}
         previewUrl={previewUrl}
       />
       <input
         className={inputClass}
-        placeholder="Evidence caption"
+        placeholder="Caption (optional)"
         value={caption}
         onChange={(event) => setCaption(event.target.value)}
       />
       {internalOnly ? (
-        <p className="text-sm font-bold text-amber-800">
-          Internal only. Evidence stays admin-only until the farm is verified.
+        <p className="text-sm text-amber-900">
+          Internal only — customers will not see this until the farm is marked Verified.
         </p>
       ) : (
         <label className="flex items-center gap-2 text-sm font-bold">
@@ -1081,11 +1116,11 @@ function EvidenceUploader({
             onChange={(event) => setIsPublic(event.target.checked)}
             type="checkbox"
           />
-          Public on customer trace page
+          Show on public trace page
         </label>
       )}
       <Button disabled={!file || saving} onClick={() => void upload()}>
-        {saving ? "Uploading..." : "Upload Evidence"}
+        {saving ? "Uploading..." : "Upload proof"}
       </Button>
       <div className="grid grid-cols-2 gap-3">
         {evidence.map((item) => (
@@ -1096,17 +1131,407 @@ function EvidenceUploader({
               url={item.fileUrl}
             />
             <p className="mt-2 text-xs font-bold">{item.caption || item.fileType}</p>
-            <p className="text-xs text-stone-500">{item.isPublic ? "Public" : "Private"}</p>
+            <p className="text-xs text-stone-500">{item.isPublic ? "Public" : "Internal"}</p>
             <Button onClick={() => void onDelete(item.id)} variant="danger">
               Delete
             </Button>
           </div>
         ))}
         {!evidence.length ? (
-          <p className="col-span-full text-sm text-stone-500">No evidence uploaded yet.</p>
+          <p className="col-span-full text-sm text-stone-500">No proof files uploaded yet.</p>
         ) : null}
       </div>
     </div>
+  );
+}
+
+const VERIFICATION_TYPE_OPTIONS = [
+  { label: "Field visit", value: "FIELD_VISIT" },
+  { label: "Document review", value: "DOCUMENT_REVIEW" },
+  { label: "Phone check", value: "PHONE_CHECK" },
+];
+
+const CHECKLIST_OPTIONS = [
+  { key: "soilHealth", label: "Soil health reviewed" },
+  { key: "chemicalFree", label: "No synthetic chemicals observed" },
+  { key: "waterConservation", label: "Water conservation in place" },
+  { key: "compostUse", label: "Compost / natural inputs used" },
+  { key: "biodiversity", label: "Biodiversity on the farm" },
+];
+
+function parseChecklist(json: string | null | undefined): Record<string, boolean> {
+  const initial = Object.fromEntries(CHECKLIST_OPTIONS.map((item) => [item.key, false]));
+  if (!json) return initial;
+  try {
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    for (const option of CHECKLIST_OPTIONS) {
+      initial[option.key] = Boolean(parsed[option.key]);
+    }
+  } catch {
+    return initial;
+  }
+  return initial;
+}
+
+function buildChecklistJson(checked: Record<string, boolean>): string {
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(checked).filter(([, value]) => value)),
+  );
+}
+
+function defaultVerificationForm(): VerificationPayload {
+  return {
+    agroecologyVerified: true,
+    chemicalFreeClaim: true,
+    checklistJson: buildChecklistJson({}),
+    nextVerificationDue: "",
+    observations: "",
+    status: "PENDING",
+    verificationDate: today(),
+    verificationType: "FIELD_VISIT",
+    verifiedByUserId: null,
+  };
+}
+
+function formFromVerification(verification: FarmVerification): VerificationPayload {
+  return {
+    agroecologyVerified: verification.agroecologyVerified ?? true,
+    chemicalFreeClaim: verification.chemicalFreeClaim ?? true,
+    checklistJson: verification.checklistJson ?? buildChecklistJson({}),
+    nextVerificationDue: verification.nextVerificationDue ?? "",
+    observations: verification.observations ?? "",
+    status: verification.status,
+    verificationDate: verification.verificationDate,
+    verificationType: verification.verificationType,
+    verifiedByUserId: verification.verifiedByUserId,
+  };
+}
+
+function FarmVerificationSection({ farmId }: { farmId: string }) {
+  const [latest, setLatest] = useState<FarmVerification | null>(null);
+  const [verifications, setVerifications] = useState<FarmVerification[]>([]);
+  const [evidence, setEvidence] = useState<VerificationEvidence[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<VerificationPayload>(defaultVerificationForm);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>(() => parseChecklist(null));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const lastVerified = findLastVerified(verifications);
+  const isPendingForm = form.status.trim().toUpperCase() === "PENDING";
+  const isVerifiedForm = isVerifiedStatus(form.status);
+  const activeRecord = editingId
+    ? verifications.find((item) => item.id === editingId) ?? null
+    : null;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [nextLatest, nextVerifications] = await Promise.all([
+        verificationApi.latest(farmId),
+        verificationApi.list(farmId),
+      ]);
+      setLatest(nextLatest);
+      setVerifications(nextVerifications);
+    } finally {
+      setLoading(false);
+    }
+  }, [farmId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!activeRecord?.id) {
+      setEvidence([]);
+      return;
+    }
+    void evidenceApi.list(activeRecord.id).then(setEvidence);
+  }, [activeRecord?.id]);
+
+  useEffect(() => {
+    if (!latest || showForm) return;
+    if (latest.status.trim().toUpperCase() === "PENDING") {
+      setEditingId(latest.id);
+      setForm(formFromVerification(latest));
+      setChecklist(parseChecklist(latest.checklistJson));
+      setShowForm(true);
+    }
+  }, [latest, showForm]);
+
+  function beginNewReview() {
+    setEditingId(null);
+    setForm(defaultVerificationForm());
+    setChecklist(parseChecklist(null));
+    setShowForm(true);
+    setError("");
+    setSuccess("");
+  }
+
+  function beginNextVisit() {
+    setEditingId(null);
+    setForm(defaultVerificationForm());
+    setChecklist(parseChecklist(null));
+    setShowForm(true);
+    setError("");
+    setSuccess("");
+  }
+
+  async function save() {
+    setError("");
+    setSuccess("");
+    try {
+      if (!isPendingForm && form.checklistJson) JSON.parse(form.checklistJson);
+      setSaving(true);
+      const payload: VerificationPayload = {
+        ...form,
+        checklistJson: isPendingForm ? null : buildChecklistJson(checklist),
+        nextVerificationDue: isPendingForm ? null : form.nextVerificationDue || null,
+      };
+      if (editingId) {
+        await verificationApi.update(editingId, payload);
+        setSuccess("Verification updated.");
+        await load();
+      } else {
+        const created = await verificationApi.create(farmId, payload);
+        setEditingId(created.id);
+        setSuccess("Review saved. You can upload proof files below.");
+        await load();
+        setShowForm(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save verification.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <LoadingState label="Loading field verification..." />
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <h2 className="text-xl font-black">Field verification</h2>
+      <p className="mt-2 text-sm text-stone-600">
+        Optional step after a farm is created. Record your field visit here when ready — not needed
+        on Add Farm.
+      </p>
+
+      <div className="mt-4 rounded-2xl bg-stone-50 p-4">
+        <p className="text-sm font-bold text-stone-500">Current status</p>
+        <p className="mt-1 text-lg font-black text-stone-900">
+          {formatReviewStatus(latest?.status)}
+        </p>
+        {lastVerified ? (
+          <p className="mt-1 text-sm text-emerald-800">
+            Last verified on {lastVerified.verificationDate}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-stone-500">Not verified yet</p>
+        )}
+      </div>
+
+      {!latest && !showForm ? (
+        <div className="mt-4">
+          <p className="text-sm text-stone-600">
+            Start a review when you visit the farm or collect documents.
+          </p>
+          <div className="mt-3">
+            <Button onClick={beginNewReview} type="button">
+              Start field review
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {latest && isVerifiedStatus(latest.status) && !showForm ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={beginNextVisit} type="button" variant="secondary">
+            Record next visit
+          </Button>
+        </div>
+      ) : null}
+
+      {showForm ? (
+        <div className="mt-4 space-y-4 rounded-2xl border border-stone-200 p-4">
+          <p className="text-sm font-bold text-stone-700">
+            {editingId ? "Update this review" : "New field review"}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Visit date" required>
+              <input
+                className={inputClass}
+                type="date"
+                value={form.verificationDate}
+                onChange={(event) => setForm({ ...form, verificationDate: event.target.value })}
+              />
+            </Field>
+            <Field label="Visit type" required>
+              <select
+                className={inputClass}
+                value={form.verificationType}
+                onChange={(event) => setForm({ ...form, verificationType: event.target.value })}
+              >
+                {VERIFICATION_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Status" required>
+              <select
+                className={inputClass}
+                value={form.status}
+                onChange={(event) => setForm({ ...form, status: event.target.value })}
+              >
+                <option value="PENDING">In review (internal only)</option>
+                <option value="VERIFIED">Verified (can show on trace page)</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </Field>
+          </div>
+
+          <Field
+            help={
+              isPendingForm
+                ? "Internal notes only. Customers do not see pending reviews."
+                : "Shown on the public trace page as field officer notes."
+            }
+            label={isPendingForm ? "Internal notes" : "Field officer notes"}
+          >
+            <textarea
+              className={`${inputClass} min-h-24`}
+              value={form.observations ?? ""}
+              onChange={(event) => setForm({ ...form, observations: event.target.value })}
+            />
+          </Field>
+
+          {isVerifiedForm ? (
+            <>
+              <div>
+                <p className="text-sm font-black text-stone-900">What was checked?</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {CHECKLIST_OPTIONS.map((option) => (
+                    <label className="flex items-center gap-2 text-sm font-semibold" key={option.key}>
+                      <input
+                        checked={Boolean(checklist[option.key])}
+                        onChange={(event) =>
+                          setChecklist((current) => ({
+                            ...current,
+                            [option.key]: event.target.checked,
+                          }))
+                        }
+                        type="checkbox"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Next visit due">
+                  <input
+                    className={inputClass}
+                    type="date"
+                    value={form.nextVerificationDue ?? ""}
+                    onChange={(event) => setForm({ ...form, nextVerificationDue: event.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center gap-2 text-sm font-bold">
+                  <input
+                    checked={Boolean(form.chemicalFreeClaim)}
+                    onChange={(event) => setForm({ ...form, chemicalFreeClaim: event.target.checked })}
+                    type="checkbox"
+                  />
+                  Chemical-free claim
+                </label>
+                <label className="flex items-center gap-2 text-sm font-bold">
+                  <input
+                    checked={Boolean(form.agroecologyVerified)}
+                    onChange={(event) =>
+                      setForm({ ...form, agroecologyVerified: event.target.checked })
+                    }
+                    type="checkbox"
+                  />
+                  Agroecology verified
+                </label>
+              </div>
+            </>
+          ) : null}
+
+          {activeRecord ? (
+            <div>
+              <h3 className="text-sm font-black uppercase text-stone-500">Proof files</h3>
+              <EvidenceUploader
+                evidence={evidence}
+                internalOnly={isPendingForm}
+                onDelete={(id) => evidenceApi.delete(id).then(() => evidenceApi.list(activeRecord.id).then(setEvidence))}
+                onUpload={(file, caption, isPublic) =>
+                  evidenceApi
+                    .upload(activeRecord.id, file, caption, isPublic)
+                    .then(() => evidenceApi.list(activeRecord.id).then(setEvidence))
+                }
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-stone-500">
+              Save this review first, then you can upload proof photos or documents.
+            </p>
+          )}
+
+          {error ? <p className="font-bold text-red-700">{error}</p> : null}
+          {success ? <p className="font-bold text-emerald-700">{success}</p> : null}
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={saving} onClick={() => void save()} type="button">
+              {saving ? "Saving..." : editingId ? "Save verification" : "Create verification"}
+            </Button>
+            <Button
+              disabled={saving}
+              onClick={() => {
+                setShowForm(false);
+                setEditingId(null);
+                setError("");
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {verifications.length ? (
+        <div className="mt-4 rounded-2xl bg-emerald-50 p-3">
+          <h3 className="font-black text-emerald-950">Past visits</h3>
+          <div className="mt-2 space-y-2">
+            {verifications.map((item) => {
+              const pending = item.status?.trim().toUpperCase() === "PENDING";
+              return (
+                <div className="rounded-xl bg-white p-3 text-sm" key={item.id}>
+                  <p className="font-black">
+                    {pending ? "In review" : item.status || "Recorded"} · {item.verificationDate}
+                  </p>
+                  <p className="text-stone-600">{item.observations || "No notes added."}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </Card>
   );
 }
 
@@ -1225,213 +1650,6 @@ function useFilePreview(file: File | null) {
   }, [file]);
 
   return previewUrl;
-}
-
-function VerificationPanel({
-  evidence,
-  farmId,
-  lastVerified,
-  latest,
-  onEvidenceDelete,
-  onEvidenceUpload,
-  onSaved,
-  verifications,
-}: {
-  evidence: VerificationEvidence[];
-  farmId: string;
-  lastVerified: FarmVerification | null;
-  latest: FarmVerification | null;
-  onEvidenceDelete: (id: string) => Promise<void>;
-  onEvidenceUpload: (file: File, caption: string, isPublic: boolean) => Promise<void>;
-  onSaved: () => void;
-  verifications: FarmVerification[];
-}) {
-  const [form, setForm] = useState<VerificationPayload>({
-    agroecologyVerified: true,
-    chemicalFreeClaim: true,
-    checklistJson: "{}",
-    nextVerificationDue: "",
-    observations: "",
-    status: "PENDING",
-    verificationDate: today(),
-    verificationType: "FIELD_VISIT",
-    verifiedByUserId: null,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const isPendingForm = form.status.trim().toUpperCase() === "PENDING";
-  const latestIsPending = latest?.status?.trim().toUpperCase() === "PENDING";
-  const latestIsVerified = isVerifiedStatus(latest?.status);
-  const publicEvidenceCount = evidence.filter((item) => item.isPublic).length;
-  const internalEvidenceCount = evidence.length - publicEvidenceCount;
-
-  const defaultForm = (): VerificationPayload => ({
-    agroecologyVerified: true,
-    chemicalFreeClaim: true,
-    checklistJson: "{}",
-    nextVerificationDue: "",
-    observations: "",
-    status: "PENDING",
-    verificationDate: today(),
-    verificationType: "FIELD_VISIT",
-    verifiedByUserId: null,
-  });
-
-  async function save() {
-    setError("");
-    try {
-      if (!isPendingForm && form.checklistJson) JSON.parse(form.checklistJson);
-      setSaving(true);
-      await verificationApi.create(farmId, {
-        ...form,
-        checklistJson: isPendingForm ? null : form.checklistJson,
-        nextVerificationDue: form.nextVerificationDue || null,
-      });
-      setForm(defaultForm());
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save verification.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Card>
-      <h2 className="text-xl font-black">Verification</h2>
-      {latestIsPending && latest ? (
-        <p className="mt-2 text-sm font-bold text-amber-800">
-          Internal review in progress since {latest.verificationDate}. Pending details are not
-          shown on the public trace page.
-        </p>
-      ) : null}
-      {lastVerified ? (
-        <p className="mt-2 text-sm font-bold text-emerald-800">
-          Last verified on {lastVerified.verificationDate}
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-stone-500">This farm has not been verified yet.</p>
-      )}
-      {latestIsVerified && publicEvidenceCount === 0 ? (
-        <p className="mt-2 text-sm font-bold text-amber-800">
-          Verified, but no public evidence uploaded yet. The verification section will still appear
-          on the trace page; upload public documents when ready.
-        </p>
-      ) : null}
-      {latestIsVerified && publicEvidenceCount > 0 ? (
-        <p className="mt-2 text-sm font-bold text-emerald-800">
-          {publicEvidenceCount} public document{publicEvidenceCount === 1 ? "" : "s"} visible on
-          trace page
-          {internalEvidenceCount > 0
-            ? ` · ${internalEvidenceCount} internal-only document${internalEvidenceCount === 1 ? "" : "s"}`
-            : ""}
-        </p>
-      ) : null}
-      {latest ? (
-        <div className="mt-4">
-          <h3 className="text-sm font-black uppercase text-stone-500">
-            {latestIsPending ? "Internal evidence for pending review" : "Evidence for latest verification"}
-          </h3>
-          <EvidenceUploader
-            evidence={evidence}
-            internalOnly={latestIsPending}
-            onDelete={onEvidenceDelete}
-            onUpload={onEvidenceUpload}
-          />
-        </div>
-      ) : null}
-      {verifications.length ? (
-        <div className="mt-4 rounded-2xl bg-emerald-50 p-3">
-          <h3 className="font-black text-emerald-950">Verification history</h3>
-          <div className="mt-2 space-y-2">
-            {verifications.map((item) => {
-              const pending = item.status?.trim().toUpperCase() === "PENDING";
-              return (
-                <div className="rounded-xl bg-white p-3 text-sm" key={item.id}>
-                  <p className="font-black">
-                    {pending ? "Pending (internal)" : item.status || "Recorded"} -{" "}
-                    {item.verificationDate}
-                  </p>
-                  <p className="text-stone-600">
-                    {item.observations || (pending ? "No internal comments yet." : "No observations added.")}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-      <div className="mt-4 grid gap-3">
-        <p className="text-sm font-bold text-stone-600">
-          Add a verification record. Use pending when docs are not ready yet. Customers only see the
-          last verified record once public evidence is uploaded.
-        </p>
-        <input
-          className={inputClass}
-          type="date"
-          value={form.verificationDate}
-          onChange={(event) => setForm({ ...form, verificationDate: event.target.value })}
-        />
-        <input
-          className={inputClass}
-          placeholder="Verification type"
-          value={form.verificationType}
-          onChange={(event) => setForm({ ...form, verificationType: event.target.value })}
-        />
-        <select
-          className={inputClass}
-          value={form.status}
-          onChange={(event) => setForm({ ...form, status: event.target.value })}
-        >
-          <option value="PENDING">Pending (internal only)</option>
-          <option value="VERIFIED">Verified</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
-        <textarea
-          className={`${inputClass} min-h-24`}
-          placeholder={isPendingForm ? "Internal comments" : "Observations"}
-          value={form.observations ?? ""}
-          onChange={(event) => setForm({ ...form, observations: event.target.value })}
-        />
-        {!isPendingForm ? (
-          <>
-            <textarea
-              className={`${inputClass} min-h-24`}
-              placeholder="Checklist JSON"
-              value={form.checklistJson ?? ""}
-              onChange={(event) => setForm({ ...form, checklistJson: event.target.value })}
-            />
-            <input
-              className={inputClass}
-              type="date"
-              value={form.nextVerificationDue ?? ""}
-              onChange={(event) => setForm({ ...form, nextVerificationDue: event.target.value })}
-            />
-            <label className="flex gap-2 text-sm font-bold">
-              <input
-                checked={Boolean(form.chemicalFreeClaim)}
-                onChange={(event) => setForm({ ...form, chemicalFreeClaim: event.target.checked })}
-                type="checkbox"
-              />{" "}
-              Chemical-free claim
-            </label>
-            <label className="flex gap-2 text-sm font-bold">
-              <input
-                checked={Boolean(form.agroecologyVerified)}
-                onChange={(event) => setForm({ ...form, agroecologyVerified: event.target.checked })}
-                type="checkbox"
-              />{" "}
-              Agroecology verified
-            </label>
-          </>
-        ) : null}
-        {error ? <p className="font-bold text-red-700">{error}</p> : null}
-        <Button disabled={saving} onClick={() => void save()}>
-          {saving ? "Saving..." : isPendingForm ? "Save Internal Pending Review" : "Add Verification"}
-        </Button>
-      </div>
-    </Card>
-  );
 }
 
 // BatchesListView supports all, farmer-scoped, and farm-scoped batch lists.

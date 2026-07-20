@@ -610,7 +610,10 @@ export function BatchForm({
   });
 
   const selectableFarms = useMemo(
-    () => farms.filter((farm) => !form.farmerId || farm.farmerId === form.farmerId),
+    () =>
+      farms.filter(
+        (farm) => farm.active !== false && (!form.farmerId || farm.farmerId === form.farmerId),
+      ),
     [farms, form.farmerId],
   );
 

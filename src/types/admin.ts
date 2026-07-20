@@ -120,11 +120,12 @@ export type Farm = {
   altitudeMeters: Nullable<number>;
   sizeAcres: Nullable<number>;
   farmingType: string;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
-export type FarmPayload = Omit<Farm, "id" | "createdAt" | "updatedAt">;
+export type FarmPayload = Omit<Farm, "id" | "active" | "createdAt" | "updatedAt">;
 
 export type FarmerResponse = Farmer;
 export type FarmResponse = Farm;

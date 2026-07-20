@@ -343,6 +343,11 @@ export const farmApi = {
       body: asJson(payload),
       method: "PUT",
     }),
+  updateStatus: (farmId: string, active: boolean) =>
+    request<Farm>(`/api/farms/${farmId}/status`, {
+      body: asJson({ active }),
+      method: "PATCH",
+    }),
 };
 
 // Batch APIs support create, edit, and farmer/farm scoped batch lookup.
@@ -420,6 +425,11 @@ export const verificationApi = {
       { optional404: true },
     ),
   list: (farmId: string) => request<FarmVerification[]>(`/api/farms/${farmId}/verifications`),
+  update: (verificationId: string, payload: VerificationPayload) =>
+    request<FarmVerification>(`/api/verifications/${verificationId}`, {
+      body: asJson(payload),
+      method: "PUT",
+    }),
 };
 
 // Trace event APIs build the customer-visible batch journey.
