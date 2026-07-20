@@ -129,6 +129,7 @@ export function AdminHomeView() {
 
 // FarmersListView loads all farmers and filters them locally for fast admin lookup.
 export function FarmersListView() {
+  const router = useRouter();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -189,7 +190,19 @@ export function FarmersListView() {
         {!loading && !error && filtered.length ? (
           <div className="grid gap-3">
             {filtered.map((farmer) => (
-              <Card key={farmer.id}>
+              <Card
+                className="cursor-pointer transition hover:border-[var(--ftf-green-300)] hover:bg-white/80"
+                key={farmer.id}
+                onClick={() => router.push(`/admin/farmers/${farmer.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(`/admin/farmers/${farmer.id}`);
+                  }
+                }}
+                role="link"
+                tabIndex={0}
+              >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex gap-4">
                     <MediaThumb type="image" url={farmer.profilePhotoUrl} />
@@ -205,10 +218,10 @@ export function FarmersListView() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <ButtonLink href={`/admin/farmers/${farmer.id}`} variant="secondary">
-                      Open
-                    </ButtonLink>
+                  <div
+                    className="flex flex-wrap gap-2"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <ButtonLink href={`/admin/farmers/${farmer.id}/edit`} variant="secondary">
                       Edit
                     </ButtonLink>
@@ -571,6 +584,7 @@ function RelatedLists({ batches, farms }: { batches: Batch[]; farms: Farm[] }) {
 
 // FarmsListView supports both all-farms and farmer-scoped farm lists.
 export function FarmsListView({ farmerId }: { farmerId?: string }) {
+  const router = useRouter();
   const [farms, setFarms] = useState<FarmWithFarmer[]>([]);
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -618,7 +632,19 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
       {!loading && !error && !farms.length ? <EmptyState message="No farms found." /> : null}
       <div className="grid gap-3">
         {farms.map((farm) => (
-          <Card key={farm.id}>
+          <Card
+            className="cursor-pointer transition hover:border-[var(--ftf-green-300)] hover:bg-white/80"
+            key={farm.id}
+            onClick={() => router.push(`/admin/farms/${farm.id}`)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                router.push(`/admin/farms/${farm.id}`);
+              }
+            }}
+            role="link"
+            tabIndex={0}
+          >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-xl font-black">{farm.farmName}</h2>
@@ -633,10 +659,10 @@ export function FarmsListView({ farmerId }: { farmerId?: string }) {
                   Lat/Lng: {fmt(farm.latitude)} / {fmt(farm.longitude)}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <ButtonLink href={`/admin/farms/${farm.id}`} variant="secondary">
-                  Open
-                </ButtonLink>
+              <div
+                className="flex flex-wrap gap-2"
+                onClick={(event) => event.stopPropagation()}
+              >
                 <ButtonLink href={`/admin/farms/${farm.id}/edit`} variant="secondary">
                   Edit
                 </ButtonLink>
